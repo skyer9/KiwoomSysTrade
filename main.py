@@ -415,6 +415,17 @@ class SysTrader:
                                         sOrgOrderNo])
         logger.debug("kiwoom_SendOrder.lRet: {}".format(lRet))
 
+    @SyncRequestDecorator.kiwoom_sync_request
+    def requestStockUpdate(self):
+        while len(self.stock.stock2monitor) == 0:
+            time.sleep(DELAY_SECOND)
+
+        # 조건검색 결과 회사의 일봉 가져오기
+        for stock_code in self.stock.stock2monitor:
+            logger.info("주식정보 가져오기 : %s" % stock_code)
+            self.requestBasicStockInfo(stock_code)
+            self.requestDayCandleChart(stock_code, size=480)
+
     def kiwoom_OnReceiveRealCondition(self, strCode, strType, strConditionName, strConditionIndex, **kwargs):
         """
         실시간 조건검색 결과 수신(목록 요청 수신 후 변경이 발생한 경우)
@@ -629,6 +640,8 @@ if __name__ == '__main__':
 
     # 조건검색 리스트 요청
     trader.requestConditionList()
+
+    trader.requestStockUpdate()
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
     # nOrderType: 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정

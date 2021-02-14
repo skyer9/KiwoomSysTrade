@@ -17,6 +17,8 @@ class StockMonitor:
         self.result = {}
         self.params = {}
 
+        self.stock2monitor = []
+
     def requestBasicStockInfo(self, strCode):
         """주식 기본정보 요청
         :param strCode:
@@ -280,6 +282,8 @@ class StockMonitor:
         """
         list_str_code = list(filter(None, strCodeList.split(';')))
         self.logger.debug("조건검색 결과: %s" % (list_str_code,))
+
+        self.stock2monitor = list_str_code
 
         # # 조검검색 결과를 종목 모니터링 리스트에 추가
         # logger.debug("1111111111")
