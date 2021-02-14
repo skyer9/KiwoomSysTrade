@@ -12,7 +12,8 @@ from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import QObject, QThread
 from PyQt5.QtWidgets import QApplication
 
-import util, config
+import config
+import util
 
 # 상수
 IS_TEST_MODE = True
@@ -904,7 +905,7 @@ if __name__ == '__main__':
     trader.kiwoom_CommConnect()
 
     # 계좌 잔액
-    # trader.kiwoom_TR_OPW00001_requestStockAccountBalance(STOCK_ACCOUNT_NUMBER)
+    trader.kiwoom_TR_OPW00001_requestStockAccountBalance(STOCK_ACCOUNT_NUMBER)
 
     # 주식 기본정보
     # trader.kiwoom_TR_OPT10001_requestBasicStockInfo("035720")
