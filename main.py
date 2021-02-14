@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import QApplication
 
 import config
 import util
+import account
+import login
 
 # 상수
 IS_TEST_MODE = True
@@ -896,13 +898,19 @@ class SysTrader:
         if '계좌수익률요청' in self.dict_callback:
             self.dict_callback['계좌수익률요청'](self.dict_holding)
 
+    def doLoginSuccess(self):
+        self.request_thread_worker.login_status = 1
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     trader = SysTrader()
+    loginManager = login.LoginManager(logger, trader)
+    # accountManager = account.AccountManager()
 
     # 로그인
-    trader.kiwoom_CommConnect()
+    loginManager.login()
+    # trader.kiwoom_CommConnect()
 
     # 계좌 잔액
     trader.kiwoom_TR_OPW00001_requestStockAccountBalance(STOCK_ACCOUNT_NUMBER)
