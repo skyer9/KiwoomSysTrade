@@ -374,7 +374,7 @@ class SysTrader:
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def processConditionListChange(self, sScrNo, strCodeList, strConditionName, nIndex, nNext, **kwargs):
-        self.stock.processConditionListChange(strCodeList)
+        self.stock.processRealtimeSendCondition(strCodeList)
 
     # -------------------------------------
     # 주문 관련함수

@@ -265,7 +265,7 @@ class StockMonitor:
         )
         return lRet
 
-    def processConditionListChange(self, strCodeList):
+    def processRealtimeSendCondition(self, strCodeList):
         """
         조건검색 결과 수신
           OnReceiveTrCondition(
