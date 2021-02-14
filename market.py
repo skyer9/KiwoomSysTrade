@@ -7,7 +7,7 @@ import util
 class MarketMonitor:
     def __init__(self, __mainLogger, __sysTrader, __SCREEN_NUMBER):
         """
-        자동투자시스템 로그인 매니저
+        자동투자시스템 시장 모니터
         """
         self.result = {}
         self.sysTrader = __sysTrader
