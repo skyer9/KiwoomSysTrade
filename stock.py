@@ -240,7 +240,7 @@ class StockMonitor:
                     if pair[0] != '':
                         nIndex = int(pair[0])
                         strConditionName = pair[1]
-                        if strConditionName == '거래량급등':
+                        if strConditionName == '시가총액':
                             # self.sysTrader.kiwoom_SendCondition(strConditionName, nIndex)
                             self.realtimeSendCondition(strConditionName, nIndex)
 
