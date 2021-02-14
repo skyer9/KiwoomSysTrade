@@ -326,7 +326,7 @@ class SysTrader:
                 self.processDayCandleChart(sRQName, sTRCode, sPreNext)
 
         elif sRQName == "업종일봉조회":
-            self.market.processMarketDayCandleChart(sRQName, sTRCode, sRecordName, sPreNext)
+            self.market.processMarketDayCandleChart(sRQName, sTRCode, sPreNext)
 
         elif sRQName == "주문":
             # self.processGetAccountProfit(sRQName, sTRCode)
