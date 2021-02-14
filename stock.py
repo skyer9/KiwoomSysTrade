@@ -90,7 +90,8 @@ class StockMonitor:
         stock_code = stock_code.strip()
 
         done = False  # 파라미터 처리 플래그
-        result = self.result.get('result', [])
+        # result = self.result.get('result', [])
+        result = []
         cnt_acc = len(result)
 
         list_item_name = []
@@ -136,3 +137,153 @@ class StockMonitor:
         for item in self.result['result']:
             print(" time : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
                   % (item['time'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
+
+    def requestDayCandleChart(self, strCode, tick, fix, size, nPrevNext):
+        """
+        주식일봉차트조회
+        :param strCode: 종목코드
+        :param tick: 틱범위
+        :param fix: 수정주가구분 (0 or 1, 수신데이터 1:유상증자, 2:무상증자, 4:배당락, 8:액면분할, 16:액면병합, 32:기업합병, 64:감자, 256:권리락)
+        :param size: Fetch these many candle sticks.
+        :param nPrevNext:
+        :return:
+        """
+        self.params['size'] = size
+        self.sysTrader.kiwoom_SetInputValue("종목코드", strCode)
+        self.sysTrader.kiwoom_SetInputValue("틱범위", str(tick))
+        self.sysTrader.kiwoom_SetInputValue("수정주가구분", str(fix))
+        res = self.sysTrader.kiwoom_CommRqData("주식일봉차트조회", "opt10081", nPrevNext, self.SCREEN_NUMBER)
+        return res
+
+    def processDayCandleChart(self, sRQName, sTRCode, sPreNext):
+        cnt = self.sysTrader.kiwoom_GetRepeatCnt(sTRCode, sRQName)
+
+        stock_code = self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, 0, "종목코드")
+        stock_code = stock_code.strip()
+
+        done = False  # 파라미터 처리 플래그
+        # result = self.result.get('result', [])
+        result = []
+        cnt_acc = len(result)
+
+        list_item_name = ["일자", "시가", "고가", "저가", "현재가", "거래량"]
+
+        for nIdx in range(cnt):
+            item = {'종목코드': stock_code}
+            for item_name in list_item_name:
+                item_value = self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name)
+                item_value = item_value.strip()
+                item[item_name] = item_value
+
+            # 범위조회 파라미터
+            date_from = int(self.params.get("date_from", "000000000000"))
+            date_to = int(self.params.get("date_to", "999999999999"))
+
+            # 결과는 최근 데이터에서 오래된 데이터 순서로 정렬되어 있음
+            date = None
+            date = int(item["일자"])
+            if date > date_to:
+                continue
+            elif date < date_from:
+                done = True
+                break
+
+            # 개수 파라미터처리
+            if cnt_acc + nIdx >= self.params.get('size', float("inf")):
+                done = True
+                break
+
+            result.append(util.convert_kv(item))
+
+        # 차트 업데이트
+        self.result['result'] = result
+        self.logger.debug(result)
+
+        if not done and cnt > 0 and sPreNext == '2':
+            self.result['nPrevNext'] = 2
+            self.result['done'] = False
+        else:
+            # 연속조회 완료
+            self.logger.debug("차트 연속조회 완료")
+            self.result['nPrevNext'] = 0
+            self.result['done'] = True
+
+        for item in self.result['result']:
+            print(" date : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
+                  % (item['date'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
+
+    def requestConditionList(self):
+        """
+        조건검색 목록요청
+        :return:
+        """
+        lRet = self.sysTrader.kiwoom.dynamicCall("GetConditionLoad()")
+        return lRet
+
+    def processConditionList(self, lRet, sMsg):
+        """
+        조건검색 조건목록 결과수신
+        GetConditionNameList() 실행하여 조건목록 획득.
+        첫번째 조건 이용하여 [조건검색]SendCondition() 실행
+        :param lRet:
+        :return:
+        """
+        self.logger.debug(sMsg)
+        if lRet:
+            # 001^거래량급등;000^일목균형;002^음운 진입;
+            sRet = self.sysTrader.kiwoom.dynamicCall("GetConditionNameList()")
+            pairs = [idx_name.split('^') for idx_name in [cond for cond in sRet.split(';')]]
+            if len(pairs) > 0:
+                for pair in pairs:
+                    if pair[0] != '':
+                        nIndex = int(pair[0])
+                        strConditionName = pair[1]
+                        if strConditionName == '거래량급등':
+                            # self.sysTrader.kiwoom_SendCondition(strConditionName, nIndex)
+                            self.realtimeSendCondition(strConditionName, nIndex)
+
+    def realtimeSendCondition(self, strConditionName, nIndex):
+        """
+        조검검색 실시간 요청. OnReceiveConditionVer() 안에서 호출해야 함.
+        실시간 요청이라도 OnReceiveTrCondition() 콜백 먼저 호출됨.
+        조검검색 결과 변경시 OnReceiveRealCondition() 콜백 호출됨.
+          SendCondition(
+          BSTR strScrNo,            // 화면번호
+          BSTR strConditionName,    // 조건식 이름
+          int nIndex,               // 조건명 인덱스
+          int nSearch               // 조회구분, 0:조건검색, 1:실시간 조건검색
+          )
+        :param strConditionName: 조건식 이름
+        :param nIndex: 조건명 인덱스
+        :return: 1: 성공, 0: 실패
+        """
+        self.logger.debug("조건검색 실시간 요청 : %s" % strConditionName)
+
+        lRet = self.sysTrader.kiwoom.dynamicCall(
+            "SendCondition(QString, QString, int, int)",
+            [self.SCREEN_NUMBER, strConditionName, nIndex, 1]
+        )
+        return lRet
+
+    def processConditionListChange(self, strCodeList):
+        """
+        조건검색 결과 수신
+          OnReceiveTrCondition(
+          BSTR sScrNo,              // 화면번호
+          BSTR strCodeList,         // 종목코드 리스트
+          BSTR strConditionName,    // 조건식 이름
+          int nIndex,               // 조건명 인덱스
+          int nNext                 // 연속조회 여부
+          )
+        :param strCodeList: 종목코드 리스트
+        :return:
+        """
+        list_str_code = list(filter(None, strCodeList.split(';')))
+        self.logger.debug("조건검색 결과: %s" % (list_str_code,))
+
+        # # 조검검색 결과를 종목 모니터링 리스트에 추가
+        # logger.debug("1111111111")
+        # self.kiwoom.set_stock2monitor.add(set(list_str_code))
+        # # print(self.kiwoom.set_stock2monitor)
+        # # self.kiwoom.set_stock2monitor.update(set(list_str_code))
+        # logger.debug("222222")
