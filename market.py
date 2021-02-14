@@ -27,7 +27,7 @@ class MarketMonitor:
         res = self.sysTrader.kiwoom_CommRqData("업종일봉조회", "opt20006", nPrevNext, self.SCREEN_NUMBER)
         return res
 
-    def processMarketDayCandleChart(self, sRQName, sTRCode, sRecordName, sPreNext):
+    def processMarketDayCandleChart(self, sRQName, sTRCode, sPreNext):
         cnt = self.sysTrader.kiwoom_GetRepeatCnt(sTRCode, sRQName)
 
         stock_code = self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, 0, "업종코드")
