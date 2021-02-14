@@ -14,6 +14,8 @@ from PyQt5.QtWidgets import QApplication
 
 import config
 import util
+import account
+import monitor
 
 # 상수
 IS_TEST_MODE = True
@@ -131,8 +133,14 @@ class SysTrader:
         """
         self.kiwoom = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
 
+        # 계좌 관리자
+        self.account = account.AccountManager(logger, self, STOCK_ACCOUNT_NUMBER, SCREEN_NUMBER)
+
+        # 마켓 모니터
+        self.market = monitor.MarketMonitor(logger, self, SCREEN_NUMBER)
+
         # 로그인 결과 수신
-        self.kiwoom.OnEventConnect.connect(self.kiwoom_OnEventConnect)
+        self.kiwoom.OnEventConnect.connect(self.processLogin)
 
         # 요청결과 수신
         self.kiwoom.OnReceiveTrData.connect(self.kiwoom_OnReceiveTrData)
@@ -169,8 +177,11 @@ class SysTrader:
     # -------------------------------------
     # 로그인 관련함수
     # -------------------------------------
+    def doLogin(self, nErrCode):
+        logger.debug("000000000000")
+
     # @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_CommConnect(self):
+    def login(self):
         """
         로그인 요청
         키움증권 로그인창 띄워주고, 자동로그인 설정시 바로 로그인 진행됨.
@@ -181,7 +192,7 @@ class SysTrader:
         return lRet
 
     @SyncRequestDecorator.kiwoom_sync_callback
-    def kiwoom_OnEventConnect(self, nErrCode):
+    def processLogin(self, nErrCode):
         """
         로그인 결과 수신
         :param nErrCode: 0: 로그인 성공, 100: 사용자 정보교환 실패, 101: 서버접속 실패, 102: 버전처리 실패
@@ -250,14 +261,8 @@ class SysTrader:
         return res
 
     @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_TR_OPW00001_requestStockAccountBalance(self, strStockAccountNumber):
-        """
-        예수금 상세현황 요청
-        :param strStockAccountNumber: 계좌번호
-        :return:
-        """
-        self.kiwoom_SetInputValue("계좌번호", strStockAccountNumber)
-        self.kiwoom_CommRqData("예수금상세현황요청", "opw00001", 0, SCREEN_NUMBER)
+    def requestBalance(self):
+        self.account.requestBalance()
 
     @SyncRequestDecorator.kiwoom_sync_request
     def kiwoom_TR_OPT10001_requestBasicStockInfo(self, strCode):
@@ -305,17 +310,8 @@ class SysTrader:
         return res
 
     @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_TR_OPT20006_requestUpjongDayCandleChart(self, strCode, size=240, nPrevNext=0):
-        """업종일봉조회
-        :param strCode: 업종코드 (001: 코스피, 002: 대형주, 003: 중형주, 004: 소형주, 101: 코스닥, 201: 코스피200, 302: KOSTAR, 701: KRX100)
-        :param size: Fetch these many candle sticks.
-        :param nPrevNext:
-        :return:
-        """
-        self.params['size'] = size
-        self.kiwoom_SetInputValue("업종코드", strCode)
-        res = self.kiwoom_CommRqData("업종일봉조회", "opt20006", nPrevNext, SCREEN_NUMBER)
-        return res
+    def requestMarketDayCandleChart(self, strCode, size=240, nPrevNext=0):
+        self.market.requestMarketDayCandleChart(strCode, size, nPrevNext)
 
     @SyncRequestDecorator.kiwoom_sync_request
     def kiwoom_TR_OPT10085_requestAccountProfit(self, accountNumber):
@@ -366,7 +362,7 @@ class SysTrader:
         """
 
         if sRQName == "예수금상세현황요청":
-            self.processGetAvailableAccountPrice(sTRCode, sRQName)
+            self.account.processBalance(sTRCode, sRQName)
 
         elif sRQName == "주식기본정보":
             self.processGetStockBasicInfo(sTRCode, sRQName)
@@ -375,7 +371,7 @@ class SysTrader:
             self.processGetMinuteDayCandleChart(sRQName, sTRCode, sRecordName, sPreNext)
 
         elif sRQName == "업종일봉조회":
-            self.processGetUpjongDayCandleChart(sRQName, sTRCode, sRecordName, sPreNext)
+            self.market.processMarketDayCandleChart(sRQName, sTRCode, sRecordName, sPreNext)
 
         elif sRQName == "계좌수익률요청":
             self.processGetAccountProfit(sRQName, sTRCode)
@@ -721,10 +717,6 @@ class SysTrader:
         res = self.kiwoom.dynamicCall("GetChejanData(int)", [nFid])
         return res
 
-    def processGetAvailableAccountPrice(self, sTRCode, sRQName):
-        self.availableAccountPrice = int(self.kiwoom_GetCommData(sTRCode, sRQName, 0, "주문가능금액"))
-        logger.debug("주문가능금액 : %s" % (self.availableAccountPrice,))
-
     def processGetStockBasicInfo(self, sTRCode, sRQName):
         cnt = self.kiwoom_GetRepeatCnt(sTRCode, sRQName)
         logger.debug("주식 건수 : %i" % cnt)
@@ -818,62 +810,6 @@ class SysTrader:
             #           % (item['date'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
             pass
 
-    def processGetUpjongDayCandleChart(self, sRQName, sTRCode, sRecordName, sPreNext):
-        cnt = self.kiwoom_GetRepeatCnt(sTRCode, sRQName)
-
-        stock_code = self.kiwoom_GetCommData(sTRCode, sRQName, 0, "업종코드")
-        stock_code = stock_code.strip()
-
-        done = False  # 파라미터 처리 플래그
-        result = self.result.get('result', [])
-        cnt_acc = len(result)
-
-        list_item_name = []
-        if sRQName == '업종일봉조회':
-            list_item_name = ["일자", "시가", "고가", "저가", "현재가", "거래량"]
-
-        for nIdx in range(cnt):
-            item = {'업종코드': stock_code}
-            for item_name in list_item_name:
-                item_value = self.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name)
-                item_value = item_value.strip()
-                item[item_name] = item_value
-
-            # 결과는 최근 데이터에서 오래된 데이터 순서로 정렬되어 있음
-            date = int(item["일자"])
-
-            # 범위조회 파라미터 처리
-            date_from = int(self.params.get("date_from", "000000000000"))
-            date_to = int(self.params.get("date_to", "999999999999"))
-            if date > date_to:
-                continue
-            elif date < date_from:
-                done = True
-                break
-
-            # 개수 파라미터처리
-            if cnt_acc + nIdx >= self.params.get('size', float("inf")):
-                done = True
-                # break
-
-            result.append(util.convert_kv(item))
-
-        # 차트 업데이트
-        self.result['result'] = result
-
-        if not done and cnt > 0 and sPreNext == '2':
-            self.result['nPrevNext'] = 2
-            self.result['done'] = False
-        else:
-            # 연속조회 완료
-            logger.debug("차트 연속조회완료")
-            self.result['nPrevNext'] = 0
-            self.result['done'] = True
-
-        for item in self.result['result']:
-            print(" date : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
-                  % (item['date'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
-
     def processGetAccountProfit(self, sRQName, sTRCode):
         cnt = self.kiwoom_GetRepeatCnt(sTRCode, sRQName)
 
@@ -896,16 +832,23 @@ class SysTrader:
         if '계좌수익률요청' in self.dict_callback:
             self.dict_callback['계좌수익률요청'](self.dict_holding)
 
+    def doLoginSuccess(self):
+        self.request_thread_worker.login_status = 1
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     trader = SysTrader()
 
     # 로그인
-    trader.kiwoom_CommConnect()
+    trader.login()
 
     # 계좌 잔액
-    trader.kiwoom_TR_OPW00001_requestStockAccountBalance(STOCK_ACCOUNT_NUMBER)
+    # trader.requestBalance()
+
+    # 업종일봉조회
+    # 업종코드 (001: 코스피, 002: 대형주, 003: 중형주, 004: 소형주, 101: 코스닥, 201: 코스피200, 302: KOSTAR, 701: KRX100)
+    trader.requestMarketDayCandleChart("001", size=480)
 
     # 주식 기본정보
     # trader.kiwoom_TR_OPT10001_requestBasicStockInfo("035720")
