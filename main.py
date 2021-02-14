@@ -641,6 +641,7 @@ if __name__ == '__main__':
     # 조건검색 리스트 요청
     trader.requestConditionList()
 
+    # 조건검색 리스트 상세정보 요쳥
     trader.requestStockUpdate()
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
