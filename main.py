@@ -152,8 +152,8 @@ class SysTrader:
         # 실시간 메시지 수신
         self.kiwoom.OnReceiveRealData.connect(self.kiwoom_OnReceiveRealData)
 
-        self.kiwoom.OnReceiveConditionVer.connect(self.kiwoom_OnReceiveConditionVer)
-        self.kiwoom.OnReceiveTrCondition.connect(self.kiwoom_OnReceiveTrCondition)
+        self.kiwoom.OnReceiveConditionVer.connect(self.processConditionList)
+        self.kiwoom.OnReceiveTrCondition.connect(self.processConditionListChange)
         self.kiwoom.OnReceiveRealCondition.connect(self.kiwoom_OnReceiveRealCondition)
 
         self.kiwoom.OnReceiveChejanData.connect(self.kiwoom_OnReceiveChejanData)
@@ -181,10 +181,6 @@ class SysTrader:
     # -------------------------------------
     # 로그인 관련함수
     # -------------------------------------
-    def doLogin(self, nErrCode):
-        logger.debug("000000000000")
-
-    # @SyncRequestDecorator.kiwoom_sync_request
     def login(self):
         """
         로그인 요청
@@ -268,72 +264,25 @@ class SysTrader:
     def requestBalance(self):
         self.account.requestBalance()
 
-    # @SyncRequestDecorator.kiwoom_sync_request
-    # def kiwoom_TR_OPT10001_requestBasicStockInfo(self, strCode):
-    #     """주식기본정보요청
-    #     :param strCode:
-    #     :return:
-    #     """
-    #     self.kiwoom_SetInputValue("종목코드", strCode)
-    #     res = self.kiwoom_CommRqData("주식기본정보", "OPT10001", 0, SCREEN_NUMBER)
-    #     return res
-
     @SyncRequestDecorator.kiwoom_sync_request
     def requestBasicStockInfo(self, strCode):
         self.stock.requestBasicStockInfo(strCode)
-
-    @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_TR_OPT10080_requestMinuteCandleChart(self, strCode, tick=1, fix=1, size=240, nPrevNext=0):
-        """주식분봉차트조회
-        :param strCode: 종목코드
-        :param tick: 틱범위 (1:1분, 3:3분, 5:5분, 10:10분, 15:15분, 30:30분, 45:45분, 60:60분)
-        :param fix: 수정주가구분 (0 or 1, 수신데이터 1:유상증자, 2:무상증자, 4:배당락, 8:액면분할, 16:액면병합, 32:기업합병, 64:감자, 256:권리락)
-        :param size: Fetch these many candle sticks.
-        :param nPrevNext:
-        :return:
-        """
-        self.params['size'] = size
-        self.kiwoom_SetInputValue("종목코드", strCode)
-        self.kiwoom_SetInputValue("틱범위", str(tick))
-        self.kiwoom_SetInputValue("수정주가구분", str(fix))
-        res = self.kiwoom_CommRqData("주식분봉차트조회", "opt10080", nPrevNext, SCREEN_NUMBER)
-        return res
 
     @SyncRequestDecorator.kiwoom_sync_request
     def requestMinuteCandleChart(self, strCode, tick=1, fix=1, size=240, nPrevNext=0):
         self.stock.requestMinuteCandleChart(strCode, tick, fix, size, nPrevNext)
 
     @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_TR_OPT10081_requestDayCandleChart(self, strCode, tick=1, fix=1, size=240, nPrevNext=0):
-        """
-        주식일봉차트조회
-        :param strCode: 종목코드
-        :param tick: 틱범위
-        :param fix: 수정주가구분 (0 or 1, 수신데이터 1:유상증자, 2:무상증자, 4:배당락, 8:액면분할, 16:액면병합, 32:기업합병, 64:감자, 256:권리락)
-        :param size: Fetch these many candle sticks.
-        :param nPrevNext:
-        :return:
-        """
-        self.params['size'] = size
-        self.kiwoom_SetInputValue("종목코드", strCode)
-        self.kiwoom_SetInputValue("틱범위", str(tick))
-        self.kiwoom_SetInputValue("수정주가구분", str(fix))
-        res = self.kiwoom_CommRqData("주식일봉차트조회", "opt10081", nPrevNext, SCREEN_NUMBER)
-        return res
+    def requestDayCandleChart(self, strCode, tick=1, fix=1, size=240, nPrevNext=0):
+        self.stock.requestDayCandleChart(strCode, tick, fix, size, nPrevNext)
 
     @SyncRequestDecorator.kiwoom_sync_request
     def requestMarketDayCandleChart(self, strCode, size=240, nPrevNext=0):
         self.market.requestMarketDayCandleChart(strCode, size, nPrevNext)
 
     @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_TR_OPT10085_requestAccountProfit(self, accountNumber):
-        """계좌수익률요청
-        :param accountNumber: 계좌번호
-        :return:
-        """
-        self.kiwoom_SetInputValue("계좌번호", accountNumber)
-        res = self.kiwoom_CommRqData("계좌수익률요청", "opt10085", 0, SCREEN_NUMBER)
-        return res
+    def requestAccountProfit(self):
+        self.account.requestProfit()
 
     @SyncRequestDecorator.kiwoom_sync_request
     def requestBuyGigwan(self, strCode, refDate):
@@ -364,17 +313,20 @@ class SysTrader:
         if sRQName == "예수금상세현황요청":
             self.account.processBalance(sTRCode, sRQName)
 
+        elif sRQName == "계좌수익률요청":
+            self.processAccountProfit(sRQName, sTRCode)
+
         elif sRQName == "주식기본정보":
             self.stock.processStockBasicInfo(sTRCode, sRQName)
 
         elif sRQName == "주식분봉차트조회" or sRQName == "주식일봉차트조회":
-            self.processMinuteCandleChart(sRQName, sTRCode, sPreNext)
+            if sRQName == "주식분봉차트조회":
+                self.processMinuteCandleChart(sRQName, sTRCode, sPreNext)
+            else:
+                self.processDayCandleChart(sRQName, sTRCode, sPreNext)
 
         elif sRQName == "업종일봉조회":
             self.market.processMarketDayCandleChart(sRQName, sTRCode, sRecordName, sPreNext)
-
-        elif sRQName == "계좌수익률요청":
-            self.processGetAccountProfit(sRQName, sTRCode)
 
         elif sRQName == "주문":
             # self.processGetAccountProfit(sRQName, sTRCode)
@@ -413,90 +365,16 @@ class SysTrader:
     # GetConditionLoad(), OnReceiveConditionVer(), SendCondition(), OnReceiveRealCondition()
     # -------------------------------------
     @SyncRequestDecorator.kiwoom_sync_request
-    def kiwoom_GetConditionLoad(self, **kwargs):
-        """
-        조건검색 목록요청
-        :return:
-        """
-        lRet = self.kiwoom.dynamicCall("GetConditionLoad()")
-        return lRet
+    def requestConditionList(self):
+        self.stock.requestConditionList()
 
     @SyncRequestDecorator.kiwoom_sync_callback
-    def kiwoom_OnReceiveConditionVer(self, lRet, sMsg, **kwargs):
-        """
-        조건검색 조건목록 결과수신
-        GetConditionNameList() 실행하여 조건목록 획득.
-        첫번째 조건 이용하여 [조건검색]SendCondition() 실행
-        :param lRet:
-        :param sMsg:
-        :param kwargs:
-        :return:
-        """
-        logger.debug("조건검색 목록수신")
-        if lRet:
-            # 001^거래량급등;000^일목균형;002^음운 진입;
-            sRet = self.kiwoom.dynamicCall("GetConditionNameList()")
-            pairs = [idx_name.split('^') for idx_name in [cond for cond in sRet.split(';')]]
-            if len(pairs) > 0:
-                for pair in pairs:
-                    if pair[0] != '':
-                        nIndex = int(pair[0])
-                        strConditionName = pair[1]
-                        if strConditionName == '거래량급등':
-                            self.kiwoom_SendCondition(strConditionName, nIndex)
-
-    def kiwoom_SendCondition(self, strConditionName, nIndex, **kwargs):
-        """
-        조검검색 실시간 요청. OnReceiveConditionVer() 안에서 호출해야 함.
-        실시간 요청이라도 OnReceiveTrCondition() 콜백 먼저 호출됨.
-        조검검색 결과 변경시 OnReceiveRealCondition() 콜백 호출됨.
-          SendCondition(
-          BSTR strScrNo,    // 화면번호
-          BSTR strConditionName,  // 조건식 이름
-          int nIndex,     // 조건명 인덱스
-          int nSearch   // 조회구분, 0:조건검색, 1:실시간 조건검색
-          )
-        :param strConditionName: 조건식 이름
-        :param nIndex: 조건명 인덱스
-        :param kwargs:
-        :return: 1: 성공, 0: 실패
-        """
-        logger.debug("조건검색 실시간 요청 : %s" % strConditionName)
-
-        lRet = self.kiwoom.dynamicCall(
-            "SendCondition(QString, QString, int, int)",
-            [SCREEN_NUMBER, strConditionName, nIndex, 1]
-        )
-        return lRet
+    def processConditionList(self, lRet, sMsg, **kwargs):
+        self.stock.processConditionList(lRet, sMsg)
 
     @SyncRequestDecorator.kiwoom_sync_callback
-    def kiwoom_OnReceiveTrCondition(self, sScrNo, strCodeList, strConditionName, nIndex, nNext, **kwargs):
-        """
-        조건검색 결과 수신
-          OnReceiveTrCondition(
-          BSTR sScrNo,    // 화면번호
-          BSTR strCodeList,   // 종목코드 리스트
-          BSTR strConditionName,    // 조건식 이름
-          int nIndex,   // 조건명 인덱스
-          int nNext   // 연속조회 여부
-          )
-        :param sScrNo: 화면번호
-        :param strCodeList: 종목코드 리스트
-        :param strConditionName: 조건식 이름
-        :param nIndex: 조건명 인덱스
-        :param nNext: 연속조회 여부
-        :param kwargs:
-        :return:
-        """
-        list_str_code = list(filter(None, strCodeList.split(';')))
-        logger.debug("조건검색 결과: %s" % (list_str_code,))
-
-        # # 조검검색 결과를 종목 모니터링 리스트에 추가
-        # logger.debug("1111111111")
-        # self.kiwoom.set_stock2monitor.add(set(list_str_code))
-        # # print(self.kiwoom.set_stock2monitor)
-        # # self.kiwoom.set_stock2monitor.update(set(list_str_code))
-        # logger.debug("222222")
+    def processConditionListChange(self, sScrNo, strCodeList, strConditionName, nIndex, nNext, **kwargs):
+        self.stock.processConditionListChange(strCodeList)
 
     # -------------------------------------
     # 주문 관련함수
@@ -707,106 +585,14 @@ class SysTrader:
         res = self.kiwoom.dynamicCall("GetChejanData(int)", [nFid])
         return res
 
-    # def processGetMinuteDayCandleChart(self, sRQName, sTRCode, sRecordName, sPreNext):
-    #     cnt = self.kiwoom_GetRepeatCnt(sTRCode, sRQName)
-    #
-    #     stock_code = self.kiwoom_GetCommData(sTRCode, sRQName, 0, "종목코드")
-    #     stock_code = stock_code.strip()
-    #
-    #     done = False  # 파라미터 처리 플래그
-    #     result = self.result.get('result', [])
-    #     cnt_acc = len(result)
-    #
-    #     list_item_name = []
-    #     if sRQName == '주식분봉차트조회':
-    #         # list_item_name = ["현재가", "거래량", "체결시간", "시가", "고가",
-    #         #                   "저가", "수정주가구분", "수정비율", "대업종구분", "소업종구분",
-    #         #                   "종목정보", "수정주가이벤트", "전일종가"]
-    #         list_item_name = ["체결시간", "시가", "고가", "저가", "현재가", "거래량"]
-    #     elif sRQName == '주식일봉차트조회':
-    #         list_item_name = ["일자", "시가", "고가", "저가", "현재가", "거래량"]
-    #
-    #     for nIdx in range(cnt):
-    #         item = {'종목코드': stock_code}
-    #         for item_name in list_item_name:
-    #             item_value = self.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name)
-    #             item_value = item_value.strip()
-    #             item[item_name] = item_value
-    #
-    #         # 범위조회 파라미터
-    #         date_from = int(self.params.get("date_from", "000000000000"))
-    #         date_to = int(self.params.get("date_to", "999999999999"))
-    #
-    #         # 결과는 최근 데이터에서 오래된 데이터 순서로 정렬되어 있음
-    #         date = None
-    #         if sRQName == '주식분봉차트조회':
-    #             date = int(item["체결시간"])
-    #         elif sRQName == '주식일봉차트조회':
-    #             date = int(item["일자"])
-    #             if date > date_to:
-    #                 continue
-    #             elif date < date_from:
-    #                 done = True
-    #                 break
-    #
-    #         # 개수 파라미터처리
-    #         if cnt_acc + nIdx >= self.params.get('size', float("inf")):
-    #             done = True
-    #             break
-    #
-    #         result.append(util.convert_kv(item))
-    #
-    #     # 차트 업데이트
-    #     self.result['result'] = result
-    #
-    #     if not done and cnt > 0 and sPreNext == '2':
-    #         self.result['nPrevNext'] = 2
-    #         self.result['done'] = False
-    #     else:
-    #         # 연속조회 완료
-    #         logger.debug("차트 연속조회완료")
-    #         self.result['nPrevNext'] = 0
-    #         self.result['done'] = True
-    #
-    #     if sRQName == '주식분봉차트조회':
-    #         # for item in self.result['result']:
-    #         #     print(" time : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
-    #         #           % (item['time'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
-    #         pass
-    #     else:
-    #         # for item in self.result['result']:
-    #         #     print(" date : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
-    #         #           % (item['date'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
-    #         pass
-    #
-
     def processMinuteCandleChart(self, sRQName, sTRCode, sPreNext):
         self.stock.processMinuteCandleChart(sRQName, sTRCode, sPreNext)
 
-    def processGetAccountProfit(self, sRQName, sTRCode):
-        cnt = self.kiwoom_GetRepeatCnt(sTRCode, sRQName)
+    def processDayCandleChart(self, sRQName, sTRCode, sPreNext):
+        self.stock.processDayCandleChart(sRQName, sTRCode, sPreNext)
 
-        assert self.dict_holding is None  # The request will set this to None.
-        result = {}
-        for nIdx in range(cnt):
-            list_item_name = ["종목코드", "종목명", "현재가", "매입가", "보유수량"]
-            dict_holding = {item_name: self.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name).strip() for
-                            item_name in list_item_name}
-            dict_holding["현재가"] = util.safe_cast(dict_holding["현재가"], int, 0)
-            # 매입가를 총매입가로 키변경
-            dict_holding["총매입가"] = util.safe_cast(dict_holding["매입가"], int, 0)
-            dict_holding["보유수량"] = util.safe_cast(dict_holding["보유수량"], int, 0)
-            dict_holding["수익"] = (dict_holding["현재가"] - dict_holding["총매입가"]) * dict_holding["보유수량"]
-            종목코드 = dict_holding["종목코드"]
-            result[종목코드] = dict_holding
-            logger.debug("계좌수익: %s" % (dict_holding,))
-
-        self.dict_holding = result
-        if '계좌수익률요청' in self.dict_callback:
-            self.dict_callback['계좌수익률요청'](self.dict_holding)
-
-    def doLoginSuccess(self):
-        self.request_thread_worker.login_status = 1
+    def processAccountProfit(self, sRQName, sTRCode):
+        self.account.processAccountProfit(sRQName, sTRCode)
 
 
 if __name__ == '__main__':
@@ -816,35 +602,33 @@ if __name__ == '__main__':
     # 로그인
     trader.login()
 
-    # 계좌 잔액
-    trader.requestBalance()
-
-    # 업종일봉조회
-    # 업종코드 (001: 코스피, 002: 대형주, 003: 중형주, 004: 소형주, 101: 코스닥, 201: 코스피200, 302: KOSTAR, 701: KRX100)
-    trader.requestMarketDayCandleChart("001", size=480)
-    # trader.requestMarketDayCandleChart("101", size=480)
-
-    # 주식 기본정보
-    trader.requestBasicStockInfo("035720")
-
-    # 종목별투자자
-    trader.requestBuyGigwan("035720", "20210210")
-
-    # 분봉조회
-    trader.requestMinuteCandleChart("035720")
-    trader.requestMinuteCandleChart("035720", size=480)
-    # trader.kiwoom_TR_OPT10080_GetMinuteCandleChart("035720")
-    # trader.kiwoom_TR_OPT10080_GetMinuteCandleChart("035720", size=480)
-
-    # 일봉조회
-    # trader.kiwoom_TR_OPT10081_GetDayCandleChart("035720")
-    # trader.kiwoom_TR_OPT10081_GetDayCandleChart("035720", size=480)
-
-    # 수익률 요청
-    # trader.kiwoom_TR_OPT10085_GetAccountProfit(STOCK_ACCOUNT_NUMBER)
+    # # 계좌 잔액
+    # trader.requestBalance()
+    #
+    # # 수익률 요청
+    # trader.requestAccountProfit()
+    #
+    # # 업종일봉조회
+    # # 업종코드 (001: 코스피, 002: 대형주, 003: 중형주, 004: 소형주, 101: 코스닥, 201: 코스피200, 302: KOSTAR, 701: KRX100)
+    # trader.requestMarketDayCandleChart("001", size=480)
+    # # trader.requestMarketDayCandleChart("101", size=480)
+    #
+    # # 주식 기본정보
+    # trader.requestBasicStockInfo("035720")
+    #
+    # # 종목별투자자
+    # trader.requestBuyGigwan("035720", "20210210")
+    #
+    # # 분봉조회
+    # trader.requestMinuteCandleChart("035720")
+    # trader.requestMinuteCandleChart("035720", size=480)
+    #
+    # # 일봉조회
+    # trader.requestDayCandleChart("035720")
+    # trader.requestDayCandleChart("035720", size=480)
 
     # 조건검색 리스트 요청
-    # trader.kiwoom_GetConditionLoad()
+    trader.requestConditionList()
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
     # nOrderType: 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정
