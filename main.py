@@ -354,7 +354,7 @@ class SysTrader:
         :param kwargs:
         :return:
         """
-        logger.debug("REAL: %s %s %s" % (sCode, sRealType, sRealData))
+        logger.debug("kiwoom_OnReceiveRealData REAL: %s %s %s" % (sCode, sRealType, sRealData))
 
         if sRealType == "주식체결":
             pass
@@ -462,7 +462,7 @@ class SysTrader:
         # if sTrCode == 'KOA_NORMAL_BUY_KP_ORD':
         #     # 매수주문 시도
         #     logger.debug("매수주문 시도")
-        logger.debug("메시지수신: %s %s %s %s" % (sScrNo, sRQName, sTrCode, sMsg))
+        logger.debug("kiwoom_OnReceiveMsg 메시지수신: %s %s %s %s" % (sScrNo, sRQName, sTrCode, sMsg))
 
     def kiwoom_OnReceiveChejanData(self, sGubun, nItemCnt, sFIdList, **kwargs):
         """주문접수, 체결, 잔고발생시
@@ -518,7 +518,7 @@ class SysTrader:
         :param kwargs:
         :return:
         """
-        logger.debug("체결/잔고: %s %s %s" % (sGubun, nItemCnt, sFIdList))
+        logger.debug("kiwoom_OnReceiveChejanData 체결/잔고: %s %s %s" % (sGubun, nItemCnt, sFIdList))
         if sGubun == '0':
             list_item_name = ["계좌번호", "주문번호", "관리자사번", "종목코드", "주문업무분류",
                               "주문상태", "종목명", "주문수량", "주문가격", "미체결수량",
@@ -534,25 +534,26 @@ class SysTrader:
                             27, 28, 914, 915, 938,
                             939, 919, 920, 921, 922,
                             923]
+
             dict_contract = {item_name: self.kiwoom_GetChejanData(item_id).strip() for item_name, item_id in
                              zip(list_item_name, list_item_id)}
 
             # 종목코드에서 'A' 제거
-            종목코드 = dict_contract["종목코드"]
-            if 'A' <= 종목코드[0] <= 'Z' or 'a' <= 종목코드[0] <= 'z':
-                종목코드 = 종목코드[1:]
-                dict_contract["종목코드"] = 종목코드
+            stock_code = dict_contract["종목코드"]
+            if 'A' <= stock_code[0] <= 'Z' or 'a' <= stock_code[0] <= 'z':
+                stock_code = stock_code[1:]
+                dict_contract["종목코드"] = stock_code
 
             # 종목을 대기 리스트에서 제거
             # if 종목코드 in self.set_stock_ordered:
             #    self.set_stock_ordered.remove(종목코드)
 
-            # 매수 체결일 경우 보유종목에 빈 dict 추가 (키만 추가하기 위해)
-            if "매수" in dict_contract["주문구분"]:
-                self.dict_holding[종목코드] = {}
-            # 매도 체결일 경우 보유종목에서 제거
-            else:
-                self.dict_holding.pop(종목코드, None)
+            # # 매수 체결일 경우 보유종목에 빈 dict 추가 (키만 추가하기 위해)
+            # if "매수" in dict_contract["주문구분"]:
+            #     self.dict_holding[stock_code] = {}
+            # # 매도 체결일 경우 보유종목에서 제거
+            # else:
+            #     self.dict_holding.pop(stock_code, None)
 
             logger.debug("체결: %s" % (dict_contract,))
 
@@ -578,13 +579,13 @@ class SysTrader:
             dict_holding["주문가능수량"] = util.safe_cast(dict_holding["주문가능수량"], int, 0)
 
             # 종목코드에서 'A' 제거
-            종목코드 = dict_holding["종목코드"]
-            if 'A' <= 종목코드[0] <= 'Z' or 'a' <= 종목코드[0] <= 'z':
-                종목코드 = 종목코드[1:]
-                dict_holding["종목코드"] = 종목코드
+            stock_code = dict_holding["종목코드"]
+            if 'A' <= stock_code[0] <= 'Z' or 'a' <= stock_code[0] <= 'z':
+                stock_code = stock_code[1:]
+                dict_holding["종목코드"] = stock_code
 
-            # 보유종목 리스트에 추가
-            self.dict_holding[종목코드] = dict_holding
+            # # 보유종목 리스트에 추가
+            # self.dict_holding[stock_code] = dict_holding
 
             logger.debug("잔고: %s" % (dict_holding,))
 
@@ -648,16 +649,21 @@ if __name__ == '__main__':
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
     # nOrderType: 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정
-    trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 1, "034830", 1, 2060, "00", "")
+    # trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 1, "034830", 1, 2060, "00", "")
 
     """
-    [2021-02-15 10:30:55,641][DEBUG] 키움 함수 실행: kiwoom_SendOrder ('주문', '1234', '1234567811', 1, '034830', 1, 2060, '00', '') {}
-    [2021-02-15 10:30:55,642][DEBUG] 주문: 주문 1234 8159006411 1 034830 1 2060 00 
-    [2021-02-15 10:30:55,647][DEBUG] kiwoom_SendOrder.lRet: 0
-    [2021-02-15 10:30:56,061][DEBUG] 메시지수신: 1234 주문 KOA_NORMAL_BUY_KP_ORD [00Z112] 모의투자 정상처리 되었습니다
-    [2021-02-15 10:30:56,064][DEBUG] 키움 함수 콜백: kiwoom_OnReceiveTrData ('1234', '주문', 'KOA_NORMAL_BUY_KP_ORD', '', '', 0, '', '', '') {}
-    [2021-02-15 10:30:56,064][DEBUG] 매수주문 시도 : ??
-    [2021-02-15 10:30:56,138][DEBUG] 체결/잔고: 0 35 9201;9203;9205;9001;912;913;302;900;901;902;903;904;905;906;907;908;909;910;911;10;27;28;914;915;938;939;919;920;921;922;923;949;10010;969;819
+    [2021-02-15 13:54:23,210][DEBUG] 키움 함수 실행: kiwoom_SendOrder ('주문', '1234', '0000000011', 1, '034830', 1, 2060, '00', '') {}
+    [2021-02-15 13:54:23,210][DEBUG] 주문: 주문 1234 0000000011 1 034830 1 2060 00 
+    [2021-02-15 13:54:23,213][DEBUG] kiwoom_SendOrder.lRet: 0
+    [2021-02-15 13:54:23,398][DEBUG] kiwoom_OnReceiveMsg 메시지수신: 1234 주문 KOA_NORMAL_BUY_KP_ORD [00Z112] 모의투자 정상처리 되었습니다
+    [2021-02-15 13:54:23,399][DEBUG] 키움 함수 콜백: kiwoom_OnReceiveTrData ('1234', '주문', 'KOA_NORMAL_BUY_KP_ORD', '', '', 0, '', '', '') {}
+    [2021-02-15 13:54:23,399][DEBUG] 매수주문 시도 : ??
+    [2021-02-15 13:54:23,474][DEBUG] kiwoom_OnReceiveChejanData 체결/잔고: 0 35 9201;9203;9205;9001;912;913;302;900;901;902;903;904;905;906;907;908;909;910;911;10;27;28;914;915;938;939;919;920;921;922;923;949;10010;969;819
+    [2021-02-15 13:54:23,475][DEBUG] 체결: {'계좌번호': '0000000011', '주문번호': '0149320', '관리자사번': '', '종목코드': '034830', '주문업무분류': 'JJ', '주문상태': '접수', '종목명': '한국토지신탁', '주문수량': '1', '주문가격': '2060', '미체결수량': '1', '체결누계금액': '0', '원주문번호': '0000000', '주문구분': '+매수', '매매구분': '보통', '매도수구분': '2', '주문체결시간': '135421', '체결번호': '', '체결가': '', '체결량': '', '현재가': '-2055', '매도호가': '-2055', '매수호가': '-2050', '단위체결가': '', '단위체결량': '', '당일매매수수료': '0', '당일매매세금': '0', '거부사유': '0', '화면번호': '1234', '터미널번호': '2204097', '신용구분': '00', '대출일': '00000000'}
+    [2021-02-15 13:54:31,881][DEBUG] kiwoom_OnReceiveChejanData 체결/잔고: 0 35 9201;9203;9205;9001;912;913;302;900;901;902;903;904;905;906;907;908;909;910;911;10;27;28;914;915;938;939;919;920;921;922;923;949;10010;969;819
+    [2021-02-15 13:54:31,882][DEBUG] 체결: {'계좌번호': '0000000011', '주문번호': '0149320', '관리자사번': '', '종목코드': '034830', '주문업무분류': 'JJ', '주문상태': '체결', '종목명': '한국토지신탁', '주문수량': '1', '주문가격': '2060', '미체결수량': '0', '체결누계금액': '2050', '원주문번호': '0000000', '주문구분': '+매수', '매매구분': '보통', '매도수구분': '2', '주문체결시간': '135430', '체결번호': '146184', '체결가': '2050', '체결량': '1', '현재가': '-2050', '매도호가': '-2055', '매수호가': '-2050', '단위체결가': '2050', '단위체결량': '1', '당일매매수수료': '0', '당일매매세금': '0', '거부사유': '0', '화면번호': '1234', '터미널번호': '2204097', '신용구분': '00', '대출일': '00000000'}
+    [2021-02-15 13:54:31,883][DEBUG] kiwoom_OnReceiveChejanData 체결/잔고: 1 34 9201;9001;917;916;302;10;930;931;932;933;945;946;950;951;27;28;307;8019;957;958;918;990;991;992;993;959;924;10010;25;11;12;306;305;970
+    [2021-02-15 13:54:31,884][DEBUG] 잔고: {'계좌번호': '0000000011', '종목코드': '034830', '신용구분': '00', '대출일': '00000000', '종목명': '한국토지신탁', '현재가': -2050, '보유수량': 5, '매입단가': 2051, '총매입가': 10255, '주문가능수량': 5, '당일순매수량': '5', '매도매수구분': '2', '당일총매도손일': '0', '예수금': '0', '매도호가': '-2055', '매수호가': '-2050', '기준가': '2080', '손익율': '0.00', '신용금액': '0', '신용이자': '0', '만기일': '00000000', '당일실현손익': '0', '당일실현손익률': '0.00', '당일실현손익_신용': '0', '당일실현손익률_신용': '0.00', '담보대출수량': '0', '기타': '0'}
     """
 
     sys.exit(app.exec_())
