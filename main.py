@@ -329,9 +329,8 @@ class SysTrader:
             self.market.processMarketDayCandleChart(sRQName, sTRCode, sPreNext)
 
         elif sRQName == "주문":
-            # self.processGetAccountProfit(sRQName, sTRCode)
-            logger.debug("111111")
-            logger.debug(sTRCode)
+            if sTRCode == 'KOA_NORMAL_BUY_KP_ORD':
+                logger.debug('매수주문 시도 : ??')
         elif sRQName == '종목별투자자':
             self.stock.processBuyGigwan(sTRCode, sRQName)
 
@@ -460,6 +459,9 @@ class SysTrader:
         :param kwargs:
         :return:
         """
+        # if sTrCode == 'KOA_NORMAL_BUY_KP_ORD':
+        #     # 매수주문 시도
+        #     logger.debug("매수주문 시도")
         logger.debug("메시지수신: %s %s %s %s" % (sScrNo, sRQName, sTrCode, sMsg))
 
     def kiwoom_OnReceiveChejanData(self, sGubun, nItemCnt, sFIdList, **kwargs):
@@ -637,15 +639,25 @@ if __name__ == '__main__':
     # # 일봉조회
     # trader.requestDayCandleChart("035720")
     # trader.requestDayCandleChart("035720", size=480)
-
-    # 조건검색 리스트 요청
-    trader.requestConditionList()
-
-    # 조건검색 리스트 상세정보 요쳥
-    trader.requestStockUpdate()
+    #
+    # # 조건검색 리스트 요청
+    # trader.requestConditionList()
+    #
+    # # 조건검색 리스트 상세정보 요쳥
+    # trader.requestStockUpdate()
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
     # nOrderType: 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정
-    # trader.kiwoom_SendOrder("주문", 화면번호, STOCK_ACCOUNT_NUMBER, 1, "000140", 1, 1000, "00", "")
+    trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 1, "034830", 1, 2060, "00", "")
+
+    """
+    [2021-02-15 10:30:55,641][DEBUG] 키움 함수 실행: kiwoom_SendOrder ('주문', '1234', '8159006411', 1, '034830', 1, 2060, '00', '') {}
+    [2021-02-15 10:30:55,642][DEBUG] 주문: 주문 1234 8159006411 1 034830 1 2060 00 
+    [2021-02-15 10:30:55,647][DEBUG] kiwoom_SendOrder.lRet: 0
+    [2021-02-15 10:30:56,061][DEBUG] 메시지수신: 1234 주문 KOA_NORMAL_BUY_KP_ORD [00Z112] 모의투자 정상처리 되었습니다
+    [2021-02-15 10:30:56,064][DEBUG] 키움 함수 콜백: kiwoom_OnReceiveTrData ('1234', '주문', 'KOA_NORMAL_BUY_KP_ORD', '', '', 0, '', '', '') {}
+    [2021-02-15 10:30:56,064][DEBUG] 매수주문 시도 : ??
+    [2021-02-15 10:30:56,138][DEBUG] 체결/잔고: 0 35 9201;9203;9205;9001;912;913;302;900;901;902;903;904;905;906;907;908;909;910;911;10;27;28;914;915;938;939;919;920;921;922;923;949;10010;969;819
+    """
 
     sys.exit(app.exec_())
