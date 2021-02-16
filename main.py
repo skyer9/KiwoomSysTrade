@@ -645,6 +645,14 @@ if __name__ == '__main__':
     # trader.requestDayCandleChart("035720")
     # trader.requestDayCandleChart("035720", size=480)
     #
+    # [opt10079: 주식틱차트조회요청]
+    # [opt10080: 주식분봉차트조회요청]
+    # [opt10081: 주식일봉차트조회요청]
+    # [opt10082: 주식주봉차트조회요청]
+    # [opt10083: 주식월봉차트조회요청]
+    #
+    # [ opt10004 : 주식호가요청 ]
+    #
     # # 조건검색 리스트 요청
     # trader.requestConditionList()
     #
