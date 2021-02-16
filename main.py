@@ -330,7 +330,11 @@ class SysTrader:
 
         elif sRQName == "주문":
             if sTRCode == 'KOA_NORMAL_BUY_KP_ORD':
-                logger.debug('매수주문 시도 : ??')
+                # 매수결과는 OnReceiveChejanData 에서 확인가능
+                logger.debug('매수주문 요청성공')
+            elif sTRCode == 'KOA_NORMAL_SELL_KP_ORD':
+                # 매도결과는 OnReceiveChejanData 에서 확인가능
+                logger.debug('매도주문 요청성공')
         elif sRQName == '종목별투자자':
             self.stock.processBuyGigwan(sTRCode, sRQName)
 
