@@ -290,7 +290,8 @@ class SysTrader:
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def kiwoom_OnReceiveTrData(self, sScrNo, sRQName, sTRCode, sRecordName, sPreNext, nDataLength, sErrorCode, sMessage, sSPlmMsg, **kwargs):
-        """TR 요청에 대한 결과 수신
+        """
+        TR 요청에 대한 결과 수신
         데이터 얻어오기 위해 내부에서 GetCommData() 호출
           GetCommData(
           BSTR strTrCode,       // TR 이름
@@ -463,10 +464,7 @@ class SysTrader:
         :param kwargs:
         :return:
         """
-        # if sTrCode == 'KOA_NORMAL_BUY_KP_ORD':
-        #     # 매수주문 시도
-        #     logger.debug("매수주문 시도")
-        logger.debug("kiwoom_OnReceiveMsg 메시지수신: %s %s %s %s" % (sScrNo, sRQName, sTrCode, sMsg))
+        logger.debug("메시지수신: %s %s %s %s" % (sScrNo, sRQName, sTrCode, sMsg))
 
     def kiwoom_OnReceiveChejanData(self, sGubun, nItemCnt, sFIdList, **kwargs):
         """주문접수, 체결, 잔고발생시
@@ -624,7 +622,7 @@ if __name__ == '__main__':
     # trader.requestBalance()
     #
     # # 수익률 요청
-    # trader.requestAccountProfit()
+    trader.requestAccountProfit()
     #
     # # 업종일봉조회
     # # 업종코드 (001: 코스피, 002: 대형주, 003: 중형주, 004: 소형주, 101: 코스닥, 201: 코스피200, 302: KOSTAR, 701: KRX100)

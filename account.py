@@ -29,9 +29,11 @@ class AccountManager:
         self.logger.debug("주문가능금액 : %s" % price)
 
     def requestProfit(self):
-        """계좌수익률요청
+        """
+        계좌수익률요청
         :return:
         """
+        self.dict_holding = None
         self.sysTrader.kiwoom_SetInputValue("계좌번호", self.ACCOUNT_NUMBER)
         res = self.sysTrader.kiwoom_CommRqData("계좌수익률요청", "opt10085", 0, self.ACCOUNT_NUMBER)
         return res
@@ -42,18 +44,19 @@ class AccountManager:
         assert self.dict_holding is None  # The request will set this to None.
         result = {}
         for nIdx in range(cnt):
-            list_item_name = ["종목코드", "종목명", "현재가", "매입가", "보유수량"]
+            list_item_name = ["일자", "종목코드", "종목명", "현재가", "매입가",
+                              "매입금액", "보유수량", "당일매도손익", "당일매매수수료", "당일매매세금",
+                              "신용구분", "대출일", "결제잔고", "정산가능수량", "신용금액",
+                              "신용이자", "만기일"]
             dict_holding = {item_name: self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name).strip() for
                             item_name in list_item_name}
             dict_holding["현재가"] = util.safe_cast(dict_holding["현재가"], int, 0)
-            # 매입가를 총매입가로 키변경
-            dict_holding["총매입가"] = util.safe_cast(dict_holding["매입가"], int, 0)
             dict_holding["보유수량"] = util.safe_cast(dict_holding["보유수량"], int, 0)
-            dict_holding["수익"] = (dict_holding["현재가"] - dict_holding["총매입가"]) * dict_holding["보유수량"]
             stock_code = dict_holding["종목코드"]
             result[stock_code] = dict_holding
-            self.logger.debug("계좌수익: %s" % (dict_holding,))
 
-        # self.dict_holding = result
+            self.logger.debug("계좌수익률: %s" % (dict_holding,))
+
+        self.dict_holding = result
         # if '계좌수익률요청' in self.dict_callback:
         #     self.dict_callback['계좌수익률요청'](self.dict_holding)
