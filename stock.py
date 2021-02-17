@@ -214,6 +214,16 @@ class StockMonitor:
             print(" date : %s, open : %f, high : %f, low : %f, 현재가 : %s, volume : %f"
                   % (item['date'], item['open'], item['high'], item['low'], item['현재가'], item['volume']))
 
+    def requestCallPrice(self, strCode):
+        """
+        주식호가요청
+        :param strCode:
+        :return:
+        """
+        self.sysTrader.kiwoom_SetInputValue("종목코드", strCode)
+        res = self.sysTrader.kiwoom_CommRqData("주식호가요청", "OPT10004", 0, self.SCREEN_NUMBER)
+        return res
+
     def requestConditionList(self):
         """
         조건검색 목록요청
