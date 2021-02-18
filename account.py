@@ -43,11 +43,11 @@ class AccountManager:
 
         assert self.dict_holding is None  # The request will set this to None.
         result = {}
+        list_item_name = ["일자", "종목코드", "종목명", "현재가", "매입가",
+                          "매입금액", "보유수량", "당일매도손익", "당일매매수수료", "당일매매세금",
+                          "신용구분", "대출일", "결제잔고", "청산가능수량", "신용금액",
+                          "신용이자", "만기일"]
         for nIdx in range(cnt):
-            list_item_name = ["일자", "종목코드", "종목명", "현재가", "매입가",
-                              "매입금액", "보유수량", "당일매도손익", "당일매매수수료", "당일매매세금",
-                              "신용구분", "대출일", "결제잔고", "정산가능수량", "신용금액",
-                              "신용이자", "만기일"]
             dict_holding = {item_name: self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name).strip() for
                             item_name in list_item_name}
             dict_holding["현재가"] = util.safe_cast(dict_holding["현재가"], int, 0)
@@ -56,7 +56,6 @@ class AccountManager:
             result[stock_code] = dict_holding
 
             self.logger.debug("계좌수익률: %s" % (dict_holding,))
+            self.logger.debug("현재가 : %i" % result[stock_code]['현재가'])
 
         self.dict_holding = result
-        # if '계좌수익률요청' in self.dict_callback:
-        #     self.dict_callback['계좌수익률요청'](self.dict_holding)
