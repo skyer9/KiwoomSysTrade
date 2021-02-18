@@ -251,15 +251,16 @@ class StockMonitor:
                           ]
         stock_code = sCode
         stock_code = stock_code.strip()
+        sRealDataList = sRealData.split()
         item = {'종목코드': stock_code}
+        i = 0
         for item_name in list_item_name:
-            item_value = self.sysTrader.kiwoom_GetCommData("OPT10004", sRQName, 0, item_name)
+            item_value = sRealDataList[i]
             item_value = item_value.strip()
             item[item_name] = item_value
+            i = i + 1
         print("processCallPrice : 호가잔량기준시간 : %s, 매도10차선잔량대비 : %s, 매도10차선잔량 : %s, 매도10차선호가 : %s"
               % (item['호가잔량기준시간'], item['매도10차선잔량대비'], item['매도10차선잔량'], item['매도10차선호가']))
-        aaa = sRealData.split()
-        print(aaa[1])
 
     def requestConditionList(self):
         """
