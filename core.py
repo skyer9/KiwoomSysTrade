@@ -185,7 +185,8 @@ class KWCore(QAxWidget):
     def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next, data_length, error_code, message,
                            sp_im_msg):
         """
-        원형 : void OnReceiveTrData(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sRecordName, LPCTSTR sPreNext, LONG nDataLength, LPCTSTR sErrorCode, LPCTSTR sMessage, LPCTSTR sSplmMsg)
+        원형 : void OnReceiveTrData(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sRecordName,
+        LPCTSTR sPreNext, LONG nDataLength, LPCTSTR sErrorCode, LPCTSTR sMessage, LPCTSTR sSplmMsg)
         설명 : 서버통신 후 데이터를 받은 시점을 알려준다.
         입력값 :
             sScrNo – 화면번호
@@ -202,6 +203,11 @@ class KWCore(QAxWidget):
             sRQName – CommRqData의 sRQName과 매핑되는 이름이다.
             sTrCode – CommRqData의 sTrCode과 매핑되는 이름이다.
         """
+        print(screen_no)
+        print(rq_name)
+        print(tr_code)
+        print(record_name)
+        print(prev_next)
         try:
             assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
             assert (KWErrorCode.OP_ERR_NONE == self.response_comm_rq_data)
@@ -375,7 +381,7 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetRepeatCnt(QString, QString)", tr_code, record_name)
 
-    def get_comm_data_ex(self, tr_code, record_name):
+    def get_comm_data_ex(self, tr_code, rq_name):
         """
         원형 : VARIANT GetCommDataEx(LPCTSTR strTrCode, LPCTSTR strRecordName)
         설명 : 차트 조회 데이터를 배열로 받아온다.
@@ -385,4 +391,19 @@ class KWCore(QAxWidget):
         비고 :
             조회 데이터가 많은 차트 경우 GetCommData()로 항목당 하나씩 받아오는 것 보다 한번에 데이터 전부를 받아서 사용자가 처리할 수 있도록 배열로 받는다.
         """
-        return self.dynamicCall("GetCommDataEx(QString, QString)", tr_code, record_name)
+        return self.dynamicCall("GetCommDataEx(QString, QString)", tr_code, rq_name)
+
+    def get_comm_data(self, tr_code, record_name, index, item_name):
+        """
+        원형 : BSTR GetCommData(LPCTSTR strTrCode, LPCTSTR strRecordName, long nIndex, LPCTSTR strItemName)
+        설명 : 수신 데이터를 반환한다.
+        입력값 :
+            strTrCode – Tran 코드
+            strRecordName – 레코드명
+            nIndex – 복수데이터 인덱스
+            strItemName – 아이템명
+        반환값 : 수신 데이터
+        비고 : Ex)현재가출력 - openApi.GetCommData("OPT00001", "주식기본정보", 0, "현재가");
+        """
+        return self.dynamicCall("GetCommData(QString, QString, int, QString)", tr_code, record_name, index,
+                                item_name).strip()
