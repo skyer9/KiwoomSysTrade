@@ -136,6 +136,18 @@ class KWCore(QAxWidget):
         """
         self.dynamicCall("SetInputValue(QString, QString)", id, value)
 
+    def disconnect_real_data(self, screen_no):
+        """
+        원형 : void DisconnectRealData(LPCTSTR sScnNo)
+        설명 : 화면 내 모든 리얼데이터 요청을 제거한다.
+        입력값 : sScnNo – 화면번호[4]
+        반환값 : 없음
+        비고 :
+            화면을 종료할 때 반드시 위 함수를 호출해야 한다.
+            Ex) openApi.DisconnectRealData("0101");
+        """
+        self.dynamicCall("DisconnectRealData(QString)", screen_no)
+
     def comm_rq_data(self, rq_name, tr_code, prev_next, screen_no):
         """
         원형 : LONG CommRqData(BSTR sRQName, BSTR sTrCode, long nPrevNext, BSTR sScreenNo)

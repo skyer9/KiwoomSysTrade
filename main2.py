@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QApplication
 from core import KWCore
 from trader import KWTrader
 
+COMMON_DELAY = 2.0
 SCREEN_NUMBER = "1010"
 
 if __name__ == '__main__':
@@ -37,9 +38,9 @@ if __name__ == '__main__':
     # result = trader.opt10001("035720", 0, SCREEN_NUMBER)
     # print(result)
 
-    # 종목별투자자기관별요청
-    result = trader.opt10059('20210218', "035720", 1, 0, 1000, 0, SCREEN_NUMBER)
-    print(result)
+    # # 종목별투자자기관별요청
+    # result = trader.opt10059('20210218', "035720", 1, 0, 1000, 0, SCREEN_NUMBER)
+    # print(result)
 
     # # 분봉
     # result = trader.opt10080('300120', 3, 1, 0, SCREEN_NUMBER)
@@ -54,3 +55,6 @@ if __name__ == '__main__':
     # # 업종일봉조회요청
     # result = trader.opt20006('001', "20200101", 0, SCREEN_NUMBER)
     # print(result)
+
+    sleep(COMMON_DELAY)
+    trader.disconnect_real_data(SCREEN_NUMBER)
