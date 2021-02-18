@@ -31,8 +31,14 @@ if __name__ == '__main__':
     # print(result)
     #
 
+    # 계좌잔고조회
+
     # 주식기본정보
-    result = trader.opt10001("035720", 0, SCREEN_NUMBER)
+    # result = trader.opt10001("035720", 0, SCREEN_NUMBER)
+    # print(result)
+
+    # 종목별투자자기관별요청
+    result = trader.opt10059('20210218', "035720", 1, 0, 1000, 0, SCREEN_NUMBER)
     print(result)
 
     # # 분봉
@@ -43,4 +49,8 @@ if __name__ == '__main__':
     # print(result)
     # # 주봉
     # result = trader.opt10082('300120', "20200101", "20210218", 1, 0, SCREEN_NUMBER)
+    # print(result)
+
+    # # 업종일봉조회요청
+    # result = trader.opt20006('001', "20200101", 0, SCREEN_NUMBER)
     # print(result)

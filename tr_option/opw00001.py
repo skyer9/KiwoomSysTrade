@@ -9,9 +9,14 @@ class Opw00001(KWTR):
         super().__init__(core)
 
         self.tr_code = 'opw00001'
-        self.rq_name = '계좌수익률요청'
+        self.rq_name = '예수금상세현황요청'
 
-        self.record_name_multiple = '계좌수익률'
+        self.record_name_single = '주식일봉차트'
+        self.header_single = [
+            '종목코드',
+        ]
+
+        self.record_name_multiple = '종목별예수금현황'
         self.header_multiple = [
             '일자', '종목코드', '종목명', '현재가', '매입가', '매입금액', '보유수량', '당일매도손익', '당일매매수수료', '당일매매세금',
             '신용구분', '대출일', '결제잔고', '청산가능수량', '신용금액', '신용이자', '만기일',
