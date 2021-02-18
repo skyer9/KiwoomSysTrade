@@ -21,7 +21,7 @@ import stock
 # 상수
 IS_TEST_MODE = True
 
-DELAY_SECOND = 2.0
+DELAY_SECOND = 5.0
 
 if IS_TEST_MODE:
     # STOCK_ACCOUNT_NUMBER = "8888888811"
@@ -368,7 +368,7 @@ class SysTrader:
         :return:
         """
         if "주식호가잔량" == sRealType:
-            logger.debug("1 kiwoom_OnReceiveRealData REAL: %s %s %s" % (sCode, sRealType, sRealData))
+            self.stock.processCallPrice(sCode, sRealType, sRealData)
         elif "주식체결" == sRealType:
             logger.debug("2 kiwoom_OnReceiveRealData REAL: %s %s %s" % (sCode, sRealType, sRealData))
         elif "종목프로그램매매" == sRealType:
@@ -391,6 +391,10 @@ class SysTrader:
     @SyncRequestDecorator.kiwoom_sync_callback
     def processConditionListChange(self, sScrNo, strCodeList, strConditionName, nIndex, nNext, **kwargs):
         self.stock.processRealtimeSendCondition(strCodeList)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def requestDisconnectRealData(self):
+        self.kiwoom.dynamicCall("DisconnectRealData(QString)", SCREEN_NUMBER)
 
     # -------------------------------------
     # 주문 관련함수
@@ -570,6 +574,7 @@ class SysTrader:
             #     self.dict_holding.pop(stock_code, None)
 
             logger.debug("체결: %s" % (dict_contract,))
+            logger.debug("주문구분 : %s" % dict_contract['주문구분'])
 
         if sGubun == '1':
             list_item_name = ["계좌번호", "종목코드", "신용구분", "대출일", "종목명",
@@ -602,6 +607,7 @@ class SysTrader:
             # self.dict_holding[stock_code] = dict_holding
 
             logger.debug("잔고: %s" % (dict_holding,))
+            logger.debug("보유수량 : %s" % dict_holding['보유수량'])
 
     def kiwoom_GetChejanData(self, nFid):
         """
@@ -663,6 +669,8 @@ if __name__ == '__main__':
     #
     # [ opt10004 : 주식호가요청 ]
     trader.requestCallPrice("035720")
+    time.sleep(5.0)
+    trader.requestDisconnectRealData()
     #
     # # 조건검색 리스트 요청
     # trader.requestConditionList()
@@ -672,12 +680,12 @@ if __name__ == '__main__':
 
     # sRQName, sScreenNo, sAccNo, nOrderType, sCode, nQty, nPrice, sHogaGb, sOrgOrderNo
     # nOrderType: 주문유형 1:신규매수, 2:신규매도 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정
-    # trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 1, "034830", 1, 2060, "00", "")
+    # trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 1, "034830", 1, 2100, "00", "")
     # trader.kiwoom_SendOrder("주문", SCREEN_NUMBER, STOCK_ACCOUNT_NUMBER, 2, "034830", 1, 2050, "00", "")
 
     # 매수로그
     """
-    [2021-02-16 10:46:28,191][DEBUG] 키움 함수 실행: kiwoom_SendOrder ('주문', '1234', '0000000011', 1, '034830', 1, 2060, '00', '') {}
+     [2021-02-16 10:46:28,191][DEBUG] 키움 함수 실행: kiwoom_SendOrder ('주문', '1234', '0000000011', 1, '034830', 1, 2060, '00', '') {}
     [2021-02-16 10:46:28,191][DEBUG] 주문: 주문 1234 0000000011 1 034830 1 2060 00 
     [2021-02-16 10:46:29,956][DEBUG] kiwoom_SendOrder.lRet: 0
     [2021-02-16 10:46:30,691][DEBUG] kiwoom_OnReceiveMsg 메시지수신: 1234 주문 KOA_NORMAL_BUY_KP_ORD [00Z112] 모의투자 정상처리 되었습니다
