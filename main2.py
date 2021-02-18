@@ -8,26 +8,49 @@ from PyQt5.QtWidgets import QApplication
 from core import KWCore
 from trader import KWTrader
 
-SCREEN_NUMBER = "1234"
+SCREEN_NUMBER = "1010"
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-
-    # kw = KWCore()
-    #
-    # kw.comm_connect()
-    #
-    # ACCNO = kw.get_login_info("ACCNO")
-    #
-    # # print(kw.get_connect_state())
-    #
-    # print(kw.get_master_code_name("300120"))
 
     trader = KWTrader()
     trader.initialize()
 
     trader.connection()
 
-    # sleep(5.0)
+    # 종목명
+    # print(trader.get_master_code_name('300120'))
 
-    print(trader.opt10001("300120", 0, SCREEN_NUMBER))
+    # 계좌번호
+    # ACCNO = trader.get_login_info("ACCNO")
+    # ACCNO = ACCNO.split(';')
+    # print(ACCNO[0])
+
+    # 계좌수익률요청
+    # result = trader.opt10085(ACCNO[0], 0, SCREEN_NUMBER)
+    # print(result)
+    #
+
+    # 계좌잔고조회
+
+    # 주식기본정보
+    # result = trader.opt10001("035720", 0, SCREEN_NUMBER)
+    # print(result)
+
+    # 종목별투자자기관별요청
+    result = trader.opt10059('20210218', "035720", 1, 0, 1000, 0, SCREEN_NUMBER)
+    print(result)
+
+    # # 분봉
+    # result = trader.opt10080('300120', 3, 1, 0, SCREEN_NUMBER)
+    # print(result)
+    # # 일봉
+    # result = trader.opt10081('300120', "20200101", 1, 0, SCREEN_NUMBER)
+    # print(result)
+    # # 주봉
+    # result = trader.opt10082('300120', "20200101", "20210218", 1, 0, SCREEN_NUMBER)
+    # print(result)
+
+    # # 업종일봉조회요청
+    # result = trader.opt20006('001', "20200101", 0, SCREEN_NUMBER)
+    # print(result)

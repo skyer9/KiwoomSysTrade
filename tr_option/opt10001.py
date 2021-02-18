@@ -12,10 +12,11 @@ class Opt10001(KWTR):
     def __init__(self, core):
         super().__init__(core)
 
-        self.rq_name = self.tr_code = 'opt10001'
+        self.tr_code = 'opt10001'
+        self.rq_name = '주식기본정보요청'
 
-        self.record_name_multiple = '주식기본정보'
-        self.header_multiple = [
+        self.record_name_single = '주식기본정보요청'
+        self.header_single = [
             '종목코드', '종목명', '결산월', '액면가', '자본금', '상장주식', '신용비율',
             '연중최고', '연중최저', '시가총액', '시가총액비중', '외인소진률', '대용가',
             'PER', 'EPS', 'ROE', 'PBR', 'EV', 'BPS', '매출액', '영업이익', '당기순이익',
@@ -26,8 +27,6 @@ class Opt10001(KWTR):
 
     def tr_opt(self, code, prev_next, screen_no):
         # 종목코드 = 전문 조회할 종목코드
-
-        print(code)
 
         self.core.set_input_value('종목코드', code)
         self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
