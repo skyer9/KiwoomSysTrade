@@ -45,7 +45,7 @@ class AccountManager:
         result = {}
         list_item_name = ["일자", "종목코드", "종목명", "현재가", "매입가",
                           "매입금액", "보유수량", "당일매도손익", "당일매매수수료", "당일매매세금",
-                          "신용구분", "대출일", "결제잔고", "정산가능수량", "신용금액",
+                          "신용구분", "대출일", "결제잔고", "청산가능수량", "신용금액",
                           "신용이자", "만기일"]
         for nIdx in range(cnt):
             dict_holding = {item_name: self.sysTrader.kiwoom_GetCommData(sTRCode, sRQName, nIdx, item_name).strip() for
