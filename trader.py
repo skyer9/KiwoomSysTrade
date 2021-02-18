@@ -4,6 +4,8 @@
 from core import KWCore
 from tr_option.opt10001 import Opt10001
 from tr_option.opt10080 import Opt10080
+from tr_option.opt10081 import Opt10081
+from tr_option.opt10082 import Opt10082
 from tr_option.opt10085 import Opt10085
 
 
@@ -12,6 +14,8 @@ class KWTrader(KWCore):
     def initialize(self):
         self.tr_list['opt10001'] = Opt10001(self)
         self.tr_list['opt10080'] = Opt10080(self)
+        self.tr_list['opt10081'] = Opt10081(self)
+        self.tr_list['opt10082'] = Opt10082(self)
         self.tr_list['opt10085'] = Opt10085(self)
 
     def connection(self):
@@ -25,6 +29,14 @@ class KWTrader(KWCore):
     # [ opt10080 : 주식분봉차트조회요청 ]
     def opt10080(self, code, tick_range, fix, prev_next, screen_no):
         return self.tr_list['opt10080'].tr_opt(code, tick_range, fix, prev_next, screen_no)
+
+    # [ opt10081 : 주식일봉차트조회요청 ]
+    def opt10081(self, code, date_from, input2, prev_next, screen_no):
+        return self.tr_list['opt10081'].tr_opt(code, date_from, input2, prev_next, screen_no)
+
+    # [ opt10082 : 주식주봉차트조회요청 ]
+    def opt10082(self, code, date_from, date_to, input3, prev_next, screen_no):
+        return self.tr_list['opt10082'].tr_opt(code, date_from, date_to, input3, prev_next, screen_no)
 
     # [ opt10085 : 계좌수익률요청 ]
     def opt10085(self, account_no, prev_next, screen_no):
