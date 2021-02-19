@@ -19,11 +19,16 @@ if __name__ == '__main__':
 
     trader.connection()
 
-    # 종목명
+    # while trader.response_connect_status is None:
+    #     sleep(1.0)
+
+    # sleep(15.0)
+
+    # # 종목명
     # print(trader.get_master_code_name('300120'))
 
     # 계좌번호
-    # ACCNO = trader.get_login_info("ACCNO")
+    ACCNO = trader.get_login_info("ACCNO")
     # ACCNO = ACCNO.split(';')
     # print(ACCNO[0])
 
@@ -56,5 +61,7 @@ if __name__ == '__main__':
     # result = trader.opt20006('001', "20200101", 0, SCREEN_NUMBER)
     # print(result)
 
-    sleep(COMMON_DELAY)
-    trader.disconnect_real_data(SCREEN_NUMBER)
+    # sleep(COMMON_DELAY)
+    # trader.disconnect_real_data(SCREEN_NUMBER)
+
+    app.exec_()
