@@ -96,6 +96,7 @@ class KWCore(QAxWidget):
         self._init_connect_events()
         # self.response_connect_status = None
         self.response_comm_rq_data = None
+        self.account_number = None
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
@@ -154,6 +155,11 @@ class KWCore(QAxWidget):
         """
         print("on_event_connect")
 
+        # 계좌정보
+        account_number = self.get_login_info('ACCNO')
+        account_number = account_number.split(';')
+        self.account_number = account_number
+
         self.request_thread_worker.login_status = 1
 
         if err_code == KWErrorCode.OP_ERR_NONE:
@@ -161,7 +167,7 @@ class KWCore(QAxWidget):
         else:
             print("연결 실패")
 
-    @SyncRequestDecorator.kiwoom_sync_request
+    # @SyncRequestDecorator.kiwoom_sync_request
     def get_login_info(self, tag):
         """
         원형 : BSTR GetLoginInfo(BSTR sTag)
@@ -235,6 +241,16 @@ class KWCore(QAxWidget):
         return self.tr_list['opt10004'].tr_opt(code, prev_next, screen_no)
 
     @SyncRequestDecorator.kiwoom_sync_request
+    def request_account_balance(self, account_no, prev_next, screen_no):
+        return self.tr_list['opw00001'].tr_opt(account_no, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_trade_balloon(self, market_type, sort_type, time_type, trade_type,
+                              minutes, jongmok_type, price_type, prev_next, screen_no):
+        return self.tr_list['opt10023'].tr_opt(market_type, sort_type, time_type, trade_type,
+                                               minutes, jongmok_type, price_type, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
     def send_order(self, rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no):
         """
         원형 : LONG SendOrder(
@@ -284,6 +300,7 @@ class KWCore(QAxWidget):
         """
         self.dynamicCall("SetInputValue(QString, QString)", id, value)
 
+    @SyncRequestDecorator.kiwoom_sync_request
     def disconnect_real_data(self, screen_no):
         """
         원형 : void DisconnectRealData(LPCTSTR sScnNo)
@@ -402,6 +419,8 @@ class KWCore(QAxWidget):
                 print("\t get_repeat_cnt(record_name_multiple) :", repeat_cnt_multiple)
 
             comm_data = {}
+            if tr_code == 'opw00001':
+                prev_next = '0'
 
             if not prev_next:
                 print("comm_data Error")
@@ -454,11 +473,6 @@ class KWCore(QAxWidget):
             print("\t\t\t", e)
             print("\t\t\t", "###########################################")
             print("\n")
-
-        # finally:
-        #     print("~*~ Ended OnReceiveTrData event! ~*~")
-        #     if self.loop_receive_tr_data.isRunning():
-        #         self.loop_receive_tr_data.exit()
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_real_data(self, jongmok_code, real_type, real_data):
