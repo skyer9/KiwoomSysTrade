@@ -28,7 +28,7 @@ if __name__ == '__main__':
     # print(trader.get_master_code_name('300120'))
 
     # 계좌번호
-    ACCNO = trader.get_login_info("ACCNO")
+    # ACCNO = trader.get_login_info("ACCNO")
     # ACCNO = ACCNO.split(';')
     # print(ACCNO[0])
 
@@ -39,8 +39,14 @@ if __name__ == '__main__':
 
     # 계좌잔고조회
 
+    # print(trader.get_connect_state)
+    # while trader.get_connect_state == 0:
+    #     print('2222222')
+    #     sleep(1.0)
+
     # 주식기본정보
     # result = trader.opt10001("035720", 0, SCREEN_NUMBER)
+    trader.request_stock_basic_info("035720", 0, SCREEN_NUMBER)
     # print(result)
 
     # # 종목별투자자기관별요청

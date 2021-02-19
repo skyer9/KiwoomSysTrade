@@ -103,7 +103,7 @@ class KWCore(QAxWidget):
 
         # 서버통신 후 데이터를 받은 시점을 알려준다.
         # self.response_comm_rq_data = None
-        # self.receive_tr_data_handler = {}
+        self.receive_tr_data_handler = {}
         # self.loop_receive_tr_data = QEventLoop()
         self.OnReceiveTrData.connect(self.on_receive_tr_data)
 
@@ -212,6 +212,10 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetMasterCodeName(QString)", code)
 
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_stock_basic_info(self, code, prev_next, screen_no):
+        return self.tr_list['opt10001'].tr_opt(code, prev_next, screen_no)
+
     def set_input_value(self, id, value):
         """
         원형 : void SetInputValue(BSTR sID, BSTR sValue)
@@ -287,8 +291,8 @@ class KWCore(QAxWidget):
         #     self.loop_receive_msg.exit()
 
     @SyncRequestDecorator.kiwoom_sync_callback
-    def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next, data_length, error_code, message,
-                           sp_im_msg):
+    def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next,
+                           data_length, error_code, message, sp_im_msg):
         """
         원형 : void OnReceiveTrData(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sRecordName,
         LPCTSTR sPreNext, LONG nDataLength, LPCTSTR sErrorCode, LPCTSTR sMessage, LPCTSTR sSplmMsg)
@@ -354,6 +358,7 @@ class KWCore(QAxWidget):
                 # 싱글 데이터 수집
                 if tr_option.record_name_single:
                     comm_data['single'] = tr_option.tr_opt_data(tr_code, rq_name, 0)
+                    print(comm_data['single'])
                 # 멀티 데이터 수집
                 if tr_option.record_name_multiple:
                     comm_data['multiple'] = tr_option.tr_opt_data_ex(tr_code, rq_name)
@@ -364,9 +369,11 @@ class KWCore(QAxWidget):
                 # 싱글 데이터 수집
                 if tr_option.record_name_single:
                     comm_data['single'] = tr_option.tr_opt_data(tr_code, rq_name, 0)
+                    print(comm_data['single'])
                 # 멀티 데이터 수집
                 if tr_option.record_name_multiple:
                     comm_data['multiple'] = tr_option.tr_opt_data_ex(tr_code, rq_name)
+                    print(comm_data['multiple'])
 
             else:
                 assert (int(prev_next) == 0 or int(prev_next) == 2)
@@ -515,5 +522,5 @@ class KWCore(QAxWidget):
         반환값 : 수신 데이터
         비고 : Ex)현재가출력 - openApi.GetCommData("OPT00001", "주식기본정보", 0, "현재가");
         """
-        return self.dynamicCall("GetCommData(QString, QString, int, QString)", tr_code, record_name, index,
-                                item_name).strip()
+        return self.dynamicCall("GetCommData(QString, QString, int, QString)",
+                                tr_code, record_name, index, item_name).strip()
