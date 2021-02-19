@@ -94,11 +94,11 @@ class KWCore(QAxWidget):
         super().__init__()
         assert(self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
-        self.response_connect_status = None
+        # self.response_connect_status = None
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
-        self.response_connect_status = None
+        # self.response_connect_status = None
         self.OnEventConnect.connect(self.on_event_connect)
 
         # 서버통신 후 데이터를 받은 시점을 알려준다.
@@ -163,7 +163,7 @@ class KWCore(QAxWidget):
         """
         print("on_event_connect")
 
-        self.response_connect_status = int(err_code)
+        # self.response_connect_status = int(err_code)
         self.request_thread_worker.login_status = 1
 
         if err_code == KWErrorCode.OP_ERR_NONE:
@@ -216,6 +216,34 @@ class KWCore(QAxWidget):
     def request_stock_basic_info(self, code, prev_next, screen_no):
         return self.tr_list['opt10001'].tr_opt(code, prev_next, screen_no)
 
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_minute_candle_chart(self, code, tick_range, fix, prev_next, screen_no):
+        return self.tr_list['opt10080'].tr_opt(code, tick_range, fix, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_day_candle_chart(self, code, date_from, input2, prev_next, screen_no):
+        return self.tr_list['opt10081'].tr_opt(code, date_from, input2, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_week_candle_chart(self, code, date_from, date_to, input3, prev_next, screen_no):
+        return self.tr_list['opt10082'].tr_opt(code, date_from, date_to, input3, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_upjong_day_candle_chart(self, input0, input1, prev_next, screen_no):
+        return self.tr_list['opt20006'].tr_opt(input0, input1, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_buy_gigwan(self, date, code, input2, input3, input4, prev_next, screen_no):
+        return self.tr_list['opt10059'].tr_opt(date, code, input2, input3, input4, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_account_profit(self, account_no, prev_next, screen_no):
+        return self.tr_list['opt10085'].tr_opt(account_no, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_call_price(self, code, prev_next, screen_no):
+        return self.tr_list['opt10004'].tr_opt(code, prev_next, screen_no)
+
     def set_input_value(self, id, value):
         """
         원형 : void SetInputValue(BSTR sID, BSTR sValue)
@@ -242,7 +270,6 @@ class KWCore(QAxWidget):
         """
         self.dynamicCall("DisconnectRealData(QString)", screen_no)
 
-    # @SyncRequestDecorator.kiwoom_sync_request
     def comm_rq_data(self, rq_name, tr_code, prev_next, screen_no):
         """
         원형 : LONG CommRqData(BSTR sRQName, BSTR sTrCode, long nPrevNext, BSTR sScreenNo)
@@ -264,8 +291,8 @@ class KWCore(QAxWidget):
             sScreenNo - 4자리의 화면번호
             Ex) openApi.CommRqData( "RQ_1", "OPT00001", 0, "0101");
         """
-        self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString", rq_name, tr_code, prev_next, screen_no)
-        # self.loop_receive_tr_data.exec_()
+        self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
+                                                      rq_name, tr_code, prev_next, screen_no)
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_msg(self, screen_no, rq_name, tr_code, msg):
@@ -318,7 +345,7 @@ class KWCore(QAxWidget):
         print(record_name)
         print(prev_next)
         try:
-            assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
+            # assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
             assert (KWErrorCode.OP_ERR_NONE == self.response_comm_rq_data)
             assert (tr_code in self.tr_list)
 
@@ -331,8 +358,8 @@ class KWCore(QAxWidget):
             print("\t record_name :", record_name)
             print("\t prev_next: ", prev_next)
             print("\n")
-            print("[ comm_rq_data ]")
-            print("\t response_comm_rq_data :", self.response_comm_rq_data)
+            # print("[ comm_rq_data ]")
+            # print("\t response_comm_rq_data :", self.response_comm_rq_data)
 
             tr_option = self.tr_list[tr_code]
 
@@ -362,6 +389,7 @@ class KWCore(QAxWidget):
                 # 멀티 데이터 수집
                 if tr_option.record_name_multiple:
                     comm_data['multiple'] = tr_option.tr_opt_data_ex(tr_code, rq_name)
+                    print(comm_data['multiple'])
 
             elif int(prev_next) == 2:
                 # TODO : 싱글 데이터 수집할 때, 전체 index 수집

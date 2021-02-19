@@ -29,8 +29,4 @@ class Opt10080(KWTR):
         self.core.set_input_value('종목코드', code)
         self.core.set_input_value('틱범위', tick_range)
         self.core.set_input_value('수정주가구분', fix)
-        self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
-
-        self.tr_data = deepcopy(self.core.receive_tr_data_handler[self.tr_code][screen_no])
-
-        return self.tr_data
+        return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)

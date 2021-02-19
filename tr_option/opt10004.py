@@ -42,6 +42,4 @@ class Opt10004(KWTR):
         # 종목코드 = 전문 조회할 종목코드
 
         self.core.set_input_value('종목코드', code)
-        self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
-
-        self.tr_data = deepcopy(self.core.receive_tr_data_handler[self.tr_code][screen_no])
+        return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
