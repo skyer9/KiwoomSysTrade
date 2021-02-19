@@ -21,8 +21,4 @@ class Opt10085(KWTR):
         # 계좌번호 = 전문 조회할 보유계좌번호
 
         self.core.set_input_value('계좌번호', input0)
-        self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
-
-        self.tr_data = deepcopy(self.core.receive_tr_data_handler[self.tr_code][screen_no])
-
-        return self.tr_data
+        return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)

@@ -32,8 +32,4 @@ class Opt10081(KWTR):
         self.core.set_input_value('종목코드', code)
         self.core.set_input_value('기준일자', date_from)
         self.core.set_input_value('수정주가구분', input2)
-        self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
-
-        self.tr_data = deepcopy(self.core.receive_tr_data_handler[self.tr_code][screen_no])
-
-        return self.tr_data
+        return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)

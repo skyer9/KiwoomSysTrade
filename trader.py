@@ -26,8 +26,8 @@ class KWTrader(KWCore):
         self.tr_list['opt20006'] = Opt20006(self)
 
     def connection(self):
-        self.comm_connect()
-        return self.response_connect_status
+        return self.comm_connect()
+        # return self.response_connect_status
 
     # [ opt10001 : 주식기본정보요청 ]
     def opt10001(self, code, prev_next, screen_no):

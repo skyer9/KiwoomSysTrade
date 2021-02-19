@@ -29,8 +29,4 @@ class Opt10059(KWTR):
         self.core.set_input_value('금액수량구분', input2)
         self.core.set_input_value('매매구분', input3)
         self.core.set_input_value('단위구분', input4)
-        self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)
-
-        self.tr_data = deepcopy(self.core.receive_tr_data_handler[self.tr_code][screen_no])
-
-        return self.tr_data
+        return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)

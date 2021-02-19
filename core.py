@@ -1,10 +1,89 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from collections import deque
+from threading import Lock
+from time import sleep
 
 from PyQt5.QAxContainer import QAxWidget
-from PyQt5.QtCore import QEventLoop
+from PyQt5.QtCore import QEventLoop, QObject, QThread
 
 from constants import KWErrorCode
+
+DELAY_SECOND = 2.0
+
+
+class SyncRequestDecorator:
+    """
+    키움 API 비동기 함수 데코레이터
+    """
+
+    @staticmethod
+    def kiwoom_sync_request(func):
+        def func_wrapper(self, *args, **kwargs):
+            self.request_thread_worker.request_queue.append((func, args, kwargs))
+
+        return func_wrapper
+
+    @staticmethod
+    def kiwoom_sync_callback(func):
+        def func_wrapper(self, *args, **kwargs):
+            print("키움 함수 콜백: %s %s %s" % (func.__name__, args, kwargs))
+            func(self, *args, **kwargs)
+            if self.request_thread_worker.request_thread_lock.locked():
+                self.request_thread_worker.request_thread_lock.release()
+
+        return func_wrapper
+
+
+class RequestThreadWorker(QObject):
+    def __init__(self):
+        """요청 쓰레드
+        """
+        super().__init__()
+        self.request_queue = deque()  # 요청 큐
+        self.request_thread_lock = Lock()
+
+        # 간혹 요청에 대한 결과가 콜백으로 오지 않음
+        # 마지막 요청을 저장해 뒀다가 일정 시간이 지나도 결과가 안오면 재요청
+        self.retry_timer = None
+
+        self.login_status = 0
+
+        self.trader = None
+
+    def retry(self, request):
+        print("키움 함수 재시도: %s %s %s" % (request[0].__name__, request[1], request[2]))
+        self.request_queue.appendleft(request)
+
+    def run(self):
+        while True:
+            if self.login_status == 0:
+                # 로그인 이전
+                print("로그인 이전")
+                sleep(DELAY_SECOND)
+                continue
+
+            # 큐에 요청이 있으면 하나 뺌
+            # 없으면 블락상태로 있음
+            try:
+                print("큐 확인")
+                request = self.request_queue.popleft()
+            except IndexError:
+                sleep(DELAY_SECOND)
+                continue
+
+            # 요청 실행
+            print("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
+            request[0](self.trader, *request[1], **request[2])
+
+            # 요청에대한 결과 대기
+            if not self.request_thread_lock.acquire(blocking=True, timeout=5):
+                # 요청 실패
+                sleep(DELAY_SECOND)
+                print("요청 재시도")
+                self.retry(request)  # 실패한 요청 재시도
+
+            sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
 
 
 class KWCore(QAxWidget):
@@ -15,42 +94,42 @@ class KWCore(QAxWidget):
         super().__init__()
         assert(self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
+        # self.response_connect_status = None
+        self.response_comm_rq_data = None
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
-        self.response_connect_status = None
-        self.loop_event_connect = QEventLoop()
         self.OnEventConnect.connect(self.on_event_connect)
 
         # 서버통신 후 데이터를 받은 시점을 알려준다.
-        self.response_comm_rq_data = None
         self.receive_tr_data_handler = {}
-        self.loop_receive_tr_data = QEventLoop()
         self.OnReceiveTrData.connect(self.on_receive_tr_data)
 
         # 실시간데이터를 받은 시점을 알려준다.
-        self.loop_receive_real_data = QEventLoop()
         self.OnReceiveRealData.connect(self.on_receive_real_data)
 
         # 서버통신 후 메시지를 받은 시점을 알려준다.
-        self.loop_receive_msg = QEventLoop()
         self.OnReceiveMsg.connect(self.on_receive_msg)
 
         # 체결데이터를 받은 시점을 알려준다.
-        self.loop_receive_chejan_data = QEventLoop()
         self.OnReceiveChejanData.connect(self.on_receive_chejan_data)
 
         # 조건검색 실시간 편입,이탈 종목을 받을 시점을 알려준다.
-        self.loop_receive_condition = QEventLoop()
         self.OnReceiveRealCondition.connect(self.on_receive_condition)
 
         # 조건검색 조회응답으로 종목리스트를 구분자(";")로 붙어서 받는 시점.
-        self.loop_receive_tr_condition = QEventLoop()
         self.OnReceiveTrCondition.connect(self.on_receive_tr_condition)
 
         # 로컬에 사용자 조건식 저장 성공 여부를 확인하는 시점
-        self.loop_receive_condition_ver = QEventLoop()
         self.OnReceiveConditionVer.connect(self.on_receive_condition_ver)
+
+        # 요청 쓰레드
+        self.request_thread_worker = RequestThreadWorker()
+        self.request_thread_worker.trader = self
+        self.request_thread = QThread()
+        self.request_thread_worker.moveToThread(self.request_thread)
+        self.request_thread.started.connect(self.request_thread_worker.run)
+        self.request_thread.start()
 
     def comm_connect(self):
         """
@@ -59,9 +138,10 @@ class KWCore(QAxWidget):
         반환값 : 0 - 성공, 음수값은 실패
         비고 : 로그인이 성공하거나 실패하는 경우 OnEventConnect 이벤트가 발생하고 이벤트의 인자 값으로 로그인 성공 여부를 알 수 있다.
         """
-        self.dynamicCall("CommConnect()")
-        self.loop_event_connect.exec_()
+        res = self.dynamicCall("CommConnect()")
+        return res
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_event_connect(self, err_code):
         """
         원형 : void OnEventConnect(LONG nErrCode);
@@ -74,16 +154,14 @@ class KWCore(QAxWidget):
         """
         print("on_event_connect")
 
-        self.response_connect_status = int(err_code)
+        self.request_thread_worker.login_status = 1
 
         if err_code == KWErrorCode.OP_ERR_NONE:
             print("연결 성공")
         else:
             print("연결 실패")
 
-        if self.loop_event_connect.isRunning():
-            self.loop_event_connect.exit()
-
+    @SyncRequestDecorator.kiwoom_sync_request
     def get_login_info(self, tag):
         """
         원형 : BSTR GetLoginInfo(BSTR sTag)
@@ -102,6 +180,7 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetLoginInfo(QString)", tag)
 
+    @SyncRequestDecorator.kiwoom_sync_request
     def get_connect_state(self):
         """
         원형 : LONG GetConnectState()
@@ -112,6 +191,7 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetConnectState()")
 
+    @SyncRequestDecorator.kiwoom_sync_request
     def get_master_code_name(self, code):
         """
         원형 : BSTR GetMasterCodeName(LPCTSTR strCode)
@@ -121,6 +201,74 @@ class KWCore(QAxWidget):
         비고 : 장내외, 지수선옵, 주식선옵 검색 가능.
         """
         return self.dynamicCall("GetMasterCodeName(QString)", code)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_stock_basic_info(self, code, prev_next, screen_no):
+        return self.tr_list['opt10001'].tr_opt(code, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_minute_candle_chart(self, code, tick_range, fix, prev_next, screen_no):
+        return self.tr_list['opt10080'].tr_opt(code, tick_range, fix, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_day_candle_chart(self, code, date_from, input2, prev_next, screen_no):
+        return self.tr_list['opt10081'].tr_opt(code, date_from, input2, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_week_candle_chart(self, code, date_from, date_to, input3, prev_next, screen_no):
+        return self.tr_list['opt10082'].tr_opt(code, date_from, date_to, input3, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_upjong_day_candle_chart(self, input0, input1, prev_next, screen_no):
+        return self.tr_list['opt20006'].tr_opt(input0, input1, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_buy_gigwan(self, date, code, input2, input3, input4, prev_next, screen_no):
+        return self.tr_list['opt10059'].tr_opt(date, code, input2, input3, input4, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_account_profit(self, account_no, prev_next, screen_no):
+        return self.tr_list['opt10085'].tr_opt(account_no, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def request_call_price(self, code, prev_next, screen_no):
+        return self.tr_list['opt10004'].tr_opt(code, prev_next, screen_no)
+
+    @SyncRequestDecorator.kiwoom_sync_request
+    def send_order(self, rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no):
+        """
+        원형 : LONG SendOrder(
+                BSTR sRQName,
+                BSTR sScreenNo,
+                BSTR sAccNo,
+                LONG nOrderType,
+                BSTR sCode,
+                LONG nQty,
+                LONG nPrice,
+                BSTR sHogaGb, BSTR sOrgOrderNo
+            )
+        설명 : 주식 주문을 서버로 전송한다.
+        입력값 :
+            sRQName - 사용자 구분 요청 명
+            sScreenNo - 화면번호[4]
+            sAccNo - 계좌번호[10]
+            nOrderType - 주문유형 (1:신규매수, 2:신규매도, 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정)
+            sCode, - 주식종목코드
+            nQty – 주문수량
+            nPrice – 주문단가
+            sHogaGb - 거래구분
+            sOrgOrderNo – 원주문번호
+        반환값 : 에러코드 <4.에러코드표 참고>
+        비고 :
+            sHogaGb – 00:지정가, 03:시장가, 05:조건부지정가, 06:최유리지정가, 07:최우선지정가, 10:지정 가IOC, 13:시장가IOC, 16:최유리IOC, 20:지정가FOK, 23:시장가FOK, 26:최유리FOK, 61:장전시간 외종가, 62:시간외단일가, 81:장후시간외종가
+            ※ 시장가, 최유리지정가, 최우선지정가, 시장가IOC, 최유리IOC, 시장가FOK, 최유리FOK, 장전시 간외, 장후시간외 주문시 주문가격을 입력하지 않습니다.
+            Ex) 지정가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 48500, "00", "");
+                시장가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 0, "03", "");
+                매수 정정 - openApi.SendOrder("RQ_1","0101", "5015123410", 5, "000660", 10, 49500, "00", "1");
+                매수 취소 - openApi.SendOrder("RQ_1", "0101", "5015123410", 3, "000660", 10, 0, "00", "2");
+        """
+        self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                               [rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no])
 
     def set_input_value(self, id, value):
         """
@@ -169,9 +317,10 @@ class KWCore(QAxWidget):
             sScreenNo - 4자리의 화면번호
             Ex) openApi.CommRqData( "RQ_1", "OPT00001", 0, "0101");
         """
-        self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString", rq_name, tr_code, prev_next, screen_no)
-        self.loop_receive_tr_data.exec_()
+        self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
+                                                      rq_name, tr_code, prev_next, screen_no)
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_msg(self, screen_no, rq_name, tr_code, msg):
         """
         원형 : void OnReceiveMsg(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sMsg)
@@ -187,15 +336,11 @@ class KWCore(QAxWidget):
             sRQName – CommRqData의 sRQName 와 매핑된다.
             sTrCode – CommRqData의 sTrCode 와 매핑된다.
         """
-        print("on_receive_msg")
-        print(msg)
+        print("on_receive_msg : %s %s %s %s" % (screen_no, rq_name, tr_code, msg))
 
-        print("~*~ Ended OnReceiveMsg event! ~*~")
-        if self.loop_receive_msg.isRunning():
-            self.loop_receive_msg.exit()
-
-    def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next, data_length, error_code, message,
-                           sp_im_msg):
+    @SyncRequestDecorator.kiwoom_sync_callback
+    def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next,
+                           data_length, error_code, message, sp_im_msg):
         """
         원형 : void OnReceiveTrData(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sRecordName,
         LPCTSTR sPreNext, LONG nDataLength, LPCTSTR sErrorCode, LPCTSTR sMessage, LPCTSTR sSplmMsg)
@@ -220,8 +365,13 @@ class KWCore(QAxWidget):
         print(tr_code)
         print(record_name)
         print(prev_next)
+
+        if tr_code == 'KOA_NORMAL_BUY_KP_ORD':
+            print('구매 콜백')
+            return
+
         try:
-            assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
+            # assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
             assert (KWErrorCode.OP_ERR_NONE == self.response_comm_rq_data)
             assert (tr_code in self.tr_list)
 
@@ -234,8 +384,8 @@ class KWCore(QAxWidget):
             print("\t record_name :", record_name)
             print("\t prev_next: ", prev_next)
             print("\n")
-            print("[ comm_rq_data ]")
-            print("\t response_comm_rq_data :", self.response_comm_rq_data)
+            # print("[ comm_rq_data ]")
+            # print("\t response_comm_rq_data :", self.response_comm_rq_data)
 
             tr_option = self.tr_list[tr_code]
 
@@ -261,9 +411,11 @@ class KWCore(QAxWidget):
                 # 싱글 데이터 수집
                 if tr_option.record_name_single:
                     comm_data['single'] = tr_option.tr_opt_data(tr_code, rq_name, 0)
+                    print(comm_data['single'])
                 # 멀티 데이터 수집
                 if tr_option.record_name_multiple:
                     comm_data['multiple'] = tr_option.tr_opt_data_ex(tr_code, rq_name)
+                    print(comm_data['multiple'])
 
             elif int(prev_next) == 2:
                 # TODO : 싱글 데이터 수집할 때, 전체 index 수집
@@ -271,9 +423,11 @@ class KWCore(QAxWidget):
                 # 싱글 데이터 수집
                 if tr_option.record_name_single:
                     comm_data['single'] = tr_option.tr_opt_data(tr_code, rq_name, 0)
+                    print(comm_data['single'])
                 # 멀티 데이터 수집
                 if tr_option.record_name_multiple:
                     comm_data['multiple'] = tr_option.tr_opt_data_ex(tr_code, rq_name)
+                    print(comm_data['multiple'])
 
             else:
                 assert (int(prev_next) == 0 or int(prev_next) == 2)
@@ -301,11 +455,12 @@ class KWCore(QAxWidget):
             print("\t\t\t", "###########################################")
             print("\n")
 
-        finally:
-            print("~*~ Ended OnReceiveTrData event! ~*~")
-            if self.loop_receive_tr_data.isRunning():
-                self.loop_receive_tr_data.exit()
+        # finally:
+        #     print("~*~ Ended OnReceiveTrData event! ~*~")
+        #     if self.loop_receive_tr_data.isRunning():
+        #         self.loop_receive_tr_data.exit()
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_real_data(self, jongmok_code, real_type, real_data):
         """
         원형 : void OnReceiveRealData(LPCTSTR sJongmokCode, LPCTSTR sRealType, LPCTSTR sRealData)
@@ -327,6 +482,7 @@ class KWCore(QAxWidget):
         else:
             print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
         """
         원형 : void OnReceiveChejanData(LPCTSTR sGubun, LONG nItemCnt, LPCTSTR sFidList);
@@ -341,8 +497,9 @@ class KWCore(QAxWidget):
             sFidList – 데이터 구분은 ';' 이다.
         """
         print("on_receive_chejan_data")
-        assert(False)
+        # assert(False)
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_condition(self, code, type, condition_name, condition_index):
         """
         원형 : void OnReceiveRealCondition(LPCTSTR strCode, LPCTSTR strType, LPCTSTR strConditionName, LPCTSTR strConditionIndex)
@@ -358,8 +515,9 @@ class KWCore(QAxWidget):
             strType으로 편입된 종목인지 이탈된 종목인지 구분한다.
         """
         print("on_receive_condition")
-        assert (False)
+        # assert (False)
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_tr_condition(self, screen_no, code_list, condition_name, index, next):
         """
         원형 : void OnReceiveTrCondition(LPCTSTR sScrNo, LPCTSTR strCodeList, LPCTSTR strConditionName, int nIndex, int nNext)
@@ -373,8 +531,9 @@ class KWCore(QAxWidget):
         반환값 : 없음
         """
         print("on_receive_tr_condition")
-        assert (False)
+        # assert (False)
 
+    @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_condition_ver(self, ret, msg):
         """
         원형 : void OnReceiveConditionVer(long lRet, LPCTSTR sMsg)
@@ -383,7 +542,7 @@ class KWCore(QAxWidget):
         반환값 : 없음
         """
         print("on_receive_condition_ver")
-        assert (False)
+        # assert (False)
 
     def get_repeat_cnt(self, tr_code, record_name):
         """
@@ -421,5 +580,5 @@ class KWCore(QAxWidget):
         반환값 : 수신 데이터
         비고 : Ex)현재가출력 - openApi.GetCommData("OPT00001", "주식기본정보", 0, "현재가");
         """
-        return self.dynamicCall("GetCommData(QString, QString, int, QString)", tr_code, record_name, index,
-                                item_name).strip()
+        return self.dynamicCall("GetCommData(QString, QString, int, QString)",
+                                tr_code, record_name, index, item_name).strip()
