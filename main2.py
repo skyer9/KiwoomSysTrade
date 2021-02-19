@@ -5,10 +5,10 @@ from time import sleep
 
 from PyQt5.QtWidgets import QApplication
 
-from core import KWCore
 from trader import KWTrader
 
 COMMON_DELAY = 2.0
+LONG_DELAY = 60.0
 SCREEN_NUMBER = "1010"
 
 if __name__ == '__main__':
@@ -56,5 +56,7 @@ if __name__ == '__main__':
     # result = trader.opt20006('001', "20200101", 0, SCREEN_NUMBER)
     # print(result)
 
-    sleep(COMMON_DELAY)
+    trader.opt10004('300120', 0, SCREEN_NUMBER)
+    sleep(LONG_DELAY)
     trader.disconnect_real_data(SCREEN_NUMBER)
+
