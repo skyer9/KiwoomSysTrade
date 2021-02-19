@@ -95,40 +95,32 @@ class KWCore(QAxWidget):
         assert(self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
         # self.response_connect_status = None
+        self.response_comm_rq_data = None
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
-        # self.response_connect_status = None
         self.OnEventConnect.connect(self.on_event_connect)
 
         # 서버통신 후 데이터를 받은 시점을 알려준다.
-        # self.response_comm_rq_data = None
         self.receive_tr_data_handler = {}
-        # self.loop_receive_tr_data = QEventLoop()
         self.OnReceiveTrData.connect(self.on_receive_tr_data)
 
         # 실시간데이터를 받은 시점을 알려준다.
-        # self.loop_receive_real_data = QEventLoop()
         self.OnReceiveRealData.connect(self.on_receive_real_data)
 
         # 서버통신 후 메시지를 받은 시점을 알려준다.
-        # self.loop_receive_msg = QEventLoop()
         self.OnReceiveMsg.connect(self.on_receive_msg)
 
         # 체결데이터를 받은 시점을 알려준다.
-        # self.loop_receive_chejan_data = QEventLoop()
         self.OnReceiveChejanData.connect(self.on_receive_chejan_data)
 
         # 조건검색 실시간 편입,이탈 종목을 받을 시점을 알려준다.
-        # self.loop_receive_condition = QEventLoop()
         self.OnReceiveRealCondition.connect(self.on_receive_condition)
 
         # 조건검색 조회응답으로 종목리스트를 구분자(";")로 붙어서 받는 시점.
-        # self.loop_receive_tr_condition = QEventLoop()
         self.OnReceiveTrCondition.connect(self.on_receive_tr_condition)
 
         # 로컬에 사용자 조건식 저장 성공 여부를 확인하는 시점
-        # self.loop_receive_condition_ver = QEventLoop()
         self.OnReceiveConditionVer.connect(self.on_receive_condition_ver)
 
         # 요청 쓰레드
@@ -139,7 +131,6 @@ class KWCore(QAxWidget):
         self.request_thread.started.connect(self.request_thread_worker.run)
         self.request_thread.start()
 
-    # @SyncRequestDecorator.kiwoom_sync_request
     def comm_connect(self):
         """
         원형 : LONG CommConnect()
@@ -163,7 +154,6 @@ class KWCore(QAxWidget):
         """
         print("on_event_connect")
 
-        # self.response_connect_status = int(err_code)
         self.request_thread_worker.login_status = 1
 
         if err_code == KWErrorCode.OP_ERR_NONE:
@@ -244,6 +234,42 @@ class KWCore(QAxWidget):
     def request_call_price(self, code, prev_next, screen_no):
         return self.tr_list['opt10004'].tr_opt(code, prev_next, screen_no)
 
+    @SyncRequestDecorator.kiwoom_sync_request
+    def send_order(self, rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no):
+        """
+        원형 : LONG SendOrder(
+                BSTR sRQName,
+                BSTR sScreenNo,
+                BSTR sAccNo,
+                LONG nOrderType,
+                BSTR sCode,
+                LONG nQty,
+                LONG nPrice,
+                BSTR sHogaGb, BSTR sOrgOrderNo
+            )
+        설명 : 주식 주문을 서버로 전송한다.
+        입력값 :
+            sRQName - 사용자 구분 요청 명
+            sScreenNo - 화면번호[4]
+            sAccNo - 계좌번호[10]
+            nOrderType - 주문유형 (1:신규매수, 2:신규매도, 3:매수취소, 4:매도취소, 5:매수정정, 6:매도정정)
+            sCode, - 주식종목코드
+            nQty – 주문수량
+            nPrice – 주문단가
+            sHogaGb - 거래구분
+            sOrgOrderNo – 원주문번호
+        반환값 : 에러코드 <4.에러코드표 참고>
+        비고 :
+            sHogaGb – 00:지정가, 03:시장가, 05:조건부지정가, 06:최유리지정가, 07:최우선지정가, 10:지정 가IOC, 13:시장가IOC, 16:최유리IOC, 20:지정가FOK, 23:시장가FOK, 26:최유리FOK, 61:장전시간 외종가, 62:시간외단일가, 81:장후시간외종가
+            ※ 시장가, 최유리지정가, 최우선지정가, 시장가IOC, 최유리IOC, 시장가FOK, 최유리FOK, 장전시 간외, 장후시간외 주문시 주문가격을 입력하지 않습니다.
+            Ex) 지정가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 48500, "00", "");
+                시장가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 0, "03", "");
+                매수 정정 - openApi.SendOrder("RQ_1","0101", "5015123410", 5, "000660", 10, 49500, "00", "1");
+                매수 취소 - openApi.SendOrder("RQ_1", "0101", "5015123410", 3, "000660", 10, 0, "00", "2");
+        """
+        self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
+                               [rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no])
+
     def set_input_value(self, id, value):
         """
         원형 : void SetInputValue(BSTR sID, BSTR sValue)
@@ -310,12 +336,7 @@ class KWCore(QAxWidget):
             sRQName – CommRqData의 sRQName 와 매핑된다.
             sTrCode – CommRqData의 sTrCode 와 매핑된다.
         """
-        print("on_receive_msg")
-        print(msg)
-
-        # print("~*~ Ended OnReceiveMsg event! ~*~")
-        # if self.loop_receive_msg.isRunning():
-        #     self.loop_receive_msg.exit()
+        print("on_receive_msg : %s %s %s %s" % (screen_no, rq_name, tr_code, msg))
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next,
@@ -344,6 +365,11 @@ class KWCore(QAxWidget):
         print(tr_code)
         print(record_name)
         print(prev_next)
+
+        if tr_code == 'KOA_NORMAL_BUY_KP_ORD':
+            print('구매 콜백')
+            return
+
         try:
             # assert (self.response_connect_status == KWErrorCode.OP_ERR_NONE)
             assert (KWErrorCode.OP_ERR_NONE == self.response_comm_rq_data)
