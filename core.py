@@ -473,10 +473,14 @@ class KWCore(QAxWidget):
         """
         print("Called OnReceiveRealData", jongmok_code, real_type, real_data)
 
-        # if self.loop_receive_real_data.isRunning():
-        #     self.loop_receive_real_data.exit()
-        #     print("Ended OnReceiveRealData")
-        #     assert (False)
+        if "주식호가잔량" == real_type:
+            print(jongmok_code, real_type, real_data)
+        elif "주식체결" == real_type:
+            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
+        elif "종목프로그램매매" == real_type:
+            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
+        else:
+            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
 
     @SyncRequestDecorator.kiwoom_sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
