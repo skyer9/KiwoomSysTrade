@@ -15,7 +15,7 @@ class Opt10001(KWTR):
         self.tr_code = 'opt10001'
         self.rq_name = '주식기본정보요청'
 
-        self.record_name_single = '주식기본정보요청'
+        self.record_name_single = '주식기본정보'
         self.header_single = [
             '종목코드', '종목명', '결산월', '액면가', '자본금', '상장주식', '신용비율',
             '연중최고', '연중최저', '시가총액', '시가총액비중', '외인소진률', '대용가',

@@ -16,7 +16,7 @@ from tr_option.opw00001 import Opw00001
 
 class KWTrader(KWCore):
 
-    def initialize(self):
+    def initialize(self, logger):
         self.tr_list['opt10001'] = Opt10001(self)
         self.tr_list['opt10004'] = Opt10004(self)
         self.tr_list['opt10023'] = Opt10023(self)
@@ -30,5 +30,7 @@ class KWTrader(KWCore):
 
         self.tr_list['opw00001'] = Opw00001(self)
 
-    def connection(self):
+        self.logger = logger
+
+    def login(self):
         return self.comm_connect()
