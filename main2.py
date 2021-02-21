@@ -107,12 +107,19 @@ def run_thread():
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
             Session.remove()
+
+            # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
+            # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
             while trader.ON_RECEIVE_TR_DATA_IN_PROCESS:
                 sleep(0.2)
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             trader.request_day_candle_chart(stock_code, yesterday, 1, 0, SCREEN_NUMBER)
+
+            # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
+            # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
             while trader.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE != stock_code:
                 sleep(0.05)
+
             sleep(COMMON_DELAY)
 
         break
