@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 from collections import deque
 from datetime import datetime
 from threading import Lock
@@ -7,10 +8,9 @@ from time import sleep
 
 from PyQt5.QAxContainer import QAxWidget
 from PyQt5.QtCore import QObject, QThread
-from sqlalchemy.orm import sessionmaker
 
 from constants import KWErrorCode
-from database import DATABASES, StockBasicInfo
+from database import StockBasicInfo, StockDayCandleChart, Session
 
 DELAY_SECOND = 2.0
 DELAY_SECOND_SHORT = 1.0
@@ -113,12 +113,11 @@ def get_data_from_multiple_comm_data(commData, lst):
 
 
 class KWCore(QAxWidget):
-
     tr_list = {}
 
     def __init__(self):
         super().__init__()
-        assert(self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
+        assert (self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
         self.response_comm_rq_data = None
         self.account_number = None
@@ -327,7 +326,7 @@ class KWCore(QAxWidget):
                 매수 취소 - openApi.SendOrder("RQ_1", "0101", "5015123410", 3, "000660", 10, 0, "00", "2");
         """
         self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
-                               [rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no])
+                         [rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no])
 
     def set_input_value(self, id, value):
         """
@@ -545,8 +544,6 @@ class KWCore(QAxWidget):
             self.logger.info('종목수 : %i' % len(self.stock_list))
         elif commData['tr_code'] == 'opt10001':
             # 주식기본정보요청
-            Session = sessionmaker()
-            Session.configure(bind=DATABASES)
             session = Session()
             res = get_data_from_single_comm_data(commData, ['종목코드', '종목명'])
             item = session.query(StockBasicInfo).filter(StockBasicInfo.종목코드 == res['종목코드']).first()
@@ -557,11 +554,29 @@ class KWCore(QAxWidget):
                 item.종목명 = res['종목명']
                 item.lastupdate = datetime.now()
             session.commit()
+            Session.remove()
         elif commData['tr_code'] == 'opt10081':
-            print(commData)
-            res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량'])
-            print(res[0]['현재가'])
-            print(res[0]['거래량'])
+            # 주식일봉차트조회요청
+            res = get_data_from_single_comm_data(commData, ['종목코드'])
+            stock_code = res['종목코드']
+            print('종목코드 start : %s' % stock_code)
+            res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량', '거래대금', '일자', '시가', '고가', '저가', '전일종가'])
+            session = Session()
+            for idx, obj in enumerate(res):
+                obj = StockDayCandleChart(stock_code, float(obj['현재가']), float(obj['거래량']), float(obj['거래대금']),
+                                          obj['일자'], float(obj['시가']), float(obj['고가']), float(obj['저가']))
+                item = session.query(StockDayCandleChart) \
+                    .filter(StockDayCandleChart.종목코드 == stock_code) \
+                    .filter(StockDayCandleChart.일자 == obj.일자) \
+                    .first()
+                if item is None:
+                    session.add(obj)
+                    # print('%s %s' % (stock_code, obj.일자))
+                else:
+                    continue
+            session.commit()
+            Session.remove()
+            print('종목코드 end : %s' % stock_code)
         else:
             print(commData)
 

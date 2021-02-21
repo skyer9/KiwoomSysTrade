@@ -1,19 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import logging
 import sys
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging.handlers import TimedRotatingFileHandler
 from time import sleep
 
 from PyQt5.QtWidgets import QApplication
-from sqlalchemy.orm import sessionmaker
 
 import config
-from database import Base, DATABASES, StockBasicInfo, StockDayCandleChart
+from database import Base, StockBasicInfo, StockDayCandleChart, Session, DATABASE
 from trader import KWTrader
 
+3
 COMMON_DELAY = 2.0
 LONG_DELAY = 20.0
 SCREEN_NUMBER = "1010"
@@ -50,6 +51,7 @@ logger.addHandler(stdout_handler)
 
 def run_thread():
     # 로그인 체크
+
     while True:
         connect_state = trader.get_connect_state()
         if connect_state is not None:
@@ -74,12 +76,9 @@ def run_thread():
         sleep(COMMON_DELAY)
 
     while True:
-        Session = sessionmaker()
-        Session.configure(bind=DATABASES)
-        session = Session()
-
         for stock_code in trader.stock_list:
             # 주식기본정보
+            session = Session()
             item = session.query(StockBasicInfo).filter(StockBasicInfo.종목코드 == stock_code).first()
             if item is not None:
                 delta = (datetime.now() - item.lastupdate)
@@ -87,33 +86,36 @@ def run_thread():
                     # 업데이트 불필요
                     # print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
-            trader.logger.info('종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+            trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             trader.request_stock_basic_info(stock_code, 0, SCREEN_NUMBER)
+            Session.remove()
             sleep(COMMON_DELAY)
-        session.commit()
 
         for stock_code in trader.stock_list:
             # 주식일봉차트
-            # item = session.query(StockDayCandleChart)\
-            #     .filter(StockDayCandleChart.종목코드 == stock_code)\
-            #     .order_by(StockDayCandleChart.일자.desc()).first()
-            # if item is not None:
-            #     delta = (datetime.now() - item.lastupdate)
-            #     if delta.days == 0:
-            #         # 업데이트 불필요
-            #         # print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
-            #         continue
-            trader.logger.info('종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
-            # trader.request_day_candle_chart('300120', "20200101", 1, 0, SCREEN_NUMBER)
-            trader.request_day_candle_chart(stock_code, "20200101", 1, 0, SCREEN_NUMBER)
-            sleep(COMMON_DELAY)
-        session.commit()
+            yesterday = datetime.now() - timedelta(days=1)
+            yesterday = yesterday.strftime("%Y%m%d")
+
+            session = Session()
+            item = session.query(StockDayCandleChart)\
+                .filter(StockDayCandleChart.종목코드 == stock_code)\
+                .order_by(StockDayCandleChart.일자.desc()).first()
+            if item is not None:
+                delta = (datetime.now() - item.lastupdate)
+                if delta.days == 0:
+                    # 업데이트 불필요
+                    print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+                    continue
+            trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+            trader.request_day_candle_chart(stock_code, yesterday, 1, 0, SCREEN_NUMBER)
+            Session.remove()
+            sleep(COMMON_DELAY * 5)
 
         break
 
 
 if __name__ == '__main__':
-    Base.metadata.create_all(DATABASES)
+    Base.metadata.create_all(DATABASE)
 
     app = QApplication(sys.argv)
 
