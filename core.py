@@ -117,6 +117,7 @@ class KWCore(QAxWidget):
 
     def __init__(self):
         super().__init__()
+
         assert (self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
         self.response_comm_rq_data = None
@@ -124,6 +125,9 @@ class KWCore(QAxWidget):
         self.logger = None
         self.available_price = None
         self.stock_list = []
+
+        self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
+        self.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE = ''
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
@@ -420,6 +424,8 @@ class KWCore(QAxWidget):
             sRQName – CommRqData의 sRQName과 매핑되는 이름이다.
             sTrCode – CommRqData의 sTrCode과 매핑되는 이름이다.
         """
+        self.ON_RECEIVE_TR_DATA_IN_PROCESS = True
+
         # print(screen_no)
         # print(rq_name)
         # print(tr_code)
@@ -428,6 +434,7 @@ class KWCore(QAxWidget):
 
         if tr_code == 'KOA_NORMAL_BUY_KP_ORD':
             print('구매 콜백')
+            self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
             return
 
         try:
@@ -516,6 +523,8 @@ class KWCore(QAxWidget):
             print("\t\t\t", "###########################################")
             print("\n")
 
+        self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
+
     def processData(self, commData):
         if commData['tr_code'] == 'opw00001':
             # 예수금상세현황요청
@@ -559,6 +568,8 @@ class KWCore(QAxWidget):
             # 주식일봉차트조회요청
             res = get_data_from_single_comm_data(commData, ['종목코드'])
             stock_code = res['종목코드']
+            self.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE = stock_code
+            sleep(0.1)
             print('종목코드 start : %s' % stock_code)
             res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량', '거래대금', '일자', '시가', '고가', '저가', '전일종가'])
             session = Session()
@@ -573,6 +584,10 @@ class KWCore(QAxWidget):
                     session.add(obj)
                     # print('%s %s' % (stock_code, obj.일자))
                 else:
+                    if idx == 0:
+                        # 첫 라인이 업데이트면 신규 데이타 없음
+                        item.lastupdate = datetime.now()
+                        break
                     continue
             session.commit()
             Session.remove()

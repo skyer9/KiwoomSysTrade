@@ -106,12 +106,18 @@ def run_thread():
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
+            Session.remove()
+            while trader.ON_RECEIVE_TR_DATA_IN_PROCESS:
+                sleep(0.2)
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             trader.request_day_candle_chart(stock_code, yesterday, 1, 0, SCREEN_NUMBER)
-            Session.remove()
-            sleep(COMMON_DELAY * 5)
+            while trader.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE != stock_code:
+                sleep(0.05)
+            sleep(COMMON_DELAY)
 
         break
+
+    print('finished.')
 
 
 if __name__ == '__main__':
