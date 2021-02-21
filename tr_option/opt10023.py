@@ -8,7 +8,8 @@ class Opt10023(KWTR):
     def __init__(self, core):
         super().__init__(core)
 
-        self.rq_name = self.tr_code = 'opt10023'
+        self.tr_code = 'opt10023'
+        self.rq_name = '거래량급증요청'
 
         self.record_name_multiple = '거래량급증'
         self.header_multiple = [
