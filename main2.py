@@ -11,6 +11,7 @@ from time import sleep
 from PyQt5.QtWidgets import QApplication
 
 import config
+from core import ScreenNumberManager
 from database import Base, StockBasicInfo, StockDayCandleChart, Session, DATABASE
 from trader import KWTrader
 
@@ -87,9 +88,11 @@ def run_thread():
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
             trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
-            trader.request_stock_basic_info(stock_code, 0, SCREEN_NUMBER)
+            screen_number = ScreenNumberManager.instance().get_screen_number()
+            trader.logger.debug("screen_number : %s" % screen_number)
+            trader.request_stock_basic_info(stock_code, 0, screen_number)
             Session.remove()
-            sleep(COMMON_DELAY*2)
+            sleep(COMMON_DELAY)
 
         for stock_code in trader.stock_list:
             # 주식일봉차트
@@ -109,17 +112,19 @@ def run_thread():
                     continue
             Session.remove()
 
-            # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
-            # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
-            while trader.ON_RECEIVE_TR_DATA_IN_PROCESS:
-                sleep(0.2)
+            # # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
+            # # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
+            # while trader.ON_RECEIVE_TR_DATA_IN_PROCESS:
+            #     sleep(0.2)
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
-            trader.request_day_candle_chart(stock_code, yesterday, 1, 0, SCREEN_NUMBER)
+            screen_number = ScreenNumberManager.instance().get_screen_number()
+            trader.logger.debug("screen_number : %s" % screen_number)
+            trader.request_day_candle_chart(stock_code, yesterday, 1, 0, screen_number)
 
-            # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
-            # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
-            while trader.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE != stock_code:
-                sleep(0.05)
+            # # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
+            # # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
+            # while trader.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE != stock_code:
+            #     sleep(0.05)
 
             sleep(COMMON_DELAY)
 

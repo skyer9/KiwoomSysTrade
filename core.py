@@ -18,6 +18,30 @@ DELAY_SECOND_SHORT = 1.0
 SCREEN_NUMBER_BASE = '0101'
 
 
+class ScreenNumberManager:
+    _instance = None
+
+    @classmethod
+    def _getInstance(cls):
+        return cls._instance
+
+    @classmethod
+    def instance(cls, *args, **kargs):
+        cls._instance = cls(*args, **kargs)
+        cls.instance = cls._getInstance
+        return cls._instance
+
+    def __init__(self):
+        self._screen_number = 1
+
+    def get_screen_number(self):
+        res = str(self._screen_number).zfill(4)
+        self._screen_number += 1
+        if self._screen_number > 100:
+            self._screen_number = 1
+        return res
+
+
 class SyncRequestDecorator:
     @staticmethod
     def sync_request(func):
