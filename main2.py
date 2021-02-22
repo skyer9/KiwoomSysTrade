@@ -84,15 +84,16 @@ def run_thread():
                 delta = (datetime.now() - item.lastupdate)
                 if delta.days == 0:
                     # 업데이트 불필요
-                    # print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+                    print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
             trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             trader.request_stock_basic_info(stock_code, 0, SCREEN_NUMBER)
             Session.remove()
-            sleep(COMMON_DELAY)
+            sleep(COMMON_DELAY*2)
 
         for stock_code in trader.stock_list:
             # 주식일봉차트
+            print('종목코드 : %s' % stock_code)
             yesterday = datetime.now() - timedelta(days=1)
             yesterday = yesterday.strftime("%Y%m%d")
 
