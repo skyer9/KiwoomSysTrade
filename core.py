@@ -625,8 +625,14 @@ class KWCore(QAxWidget):
             print("on_receive_real_data 3: %s %s %s" % (jongmok_code, real_type, real_data))
         elif "주식우선호가" == real_type:
             print("on_receive_real_data 4: %s %s %s" % (jongmok_code, real_type, real_data))
+        elif "ECN주식체결" == real_type:
+            # print("on_receive_real_data 5: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
+        elif "주식시세" == real_type:
+            # print("on_receive_real_data 6: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
         else:
-            print("on_receive_real_data 5: %s %s %s" % (jongmok_code, real_type, real_data))
+            print("on_receive_real_data 7: %s %s %s" % (jongmok_code, real_type, real_data))
 
     @SyncRequestDecorator.sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
