@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 # [ opt10001 : 주식기본정보요청 ]
-from copy import deepcopy
 
 from tr_option.base import KWTR
 
@@ -29,4 +28,5 @@ class Opt10001(KWTR):
         # 종목코드 = 전문 조회할 종목코드
 
         self.core.set_input_value('종목코드', code)
+
         return self.core.comm_rq_data(self.rq_name, self.tr_code, prev_next, screen_no)

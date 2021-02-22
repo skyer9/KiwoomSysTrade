@@ -18,6 +18,30 @@ DELAY_SECOND_SHORT = 1.0
 SCREEN_NUMBER_BASE = '0101'
 
 
+class ScreenNumberManager:
+    _instance = None
+
+    @classmethod
+    def _getInstance(cls):
+        return cls._instance
+
+    @classmethod
+    def instance(cls, *args, **kargs):
+        cls._instance = cls(*args, **kargs)
+        cls.instance = cls._getInstance
+        return cls._instance
+
+    def __init__(self):
+        self._screen_number = 1
+
+    def get_screen_number(self):
+        res = str(self._screen_number).zfill(4)
+        self._screen_number += 1
+        if self._screen_number > 100:
+            self._screen_number = 1
+        return res
+
+
 class SyncRequestDecorator:
     @staticmethod
     def sync_request(func):
@@ -382,6 +406,10 @@ class KWCore(QAxWidget):
         """
         self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
                                                       rq_name, tr_code, prev_next, screen_no)
+        if self.response_comm_rq_data == KWErrorCode.OP_ERR_NONE:
+            pass
+        else:
+            print('알 수 없는 오류 : %s' % str(self.response_comm_rq_data))
 
     @SyncRequestDecorator.sync_callback
     def on_receive_msg(self, screen_no, rq_name, tr_code, msg):
@@ -610,16 +638,25 @@ class KWCore(QAxWidget):
             sRealData – 실시간 데이터전문
         반환값 : 없음
         """
-        print("Called OnReceiveRealData", jongmok_code, real_type, real_data)
+        # print("Called OnReceiveRealData", jongmok_code, real_type, real_data)
 
         if "주식호가잔량" == real_type:
-            print(jongmok_code, real_type, real_data)
+            print("on_receive_real_data 1: %s %s %s" % (jongmok_code, real_type, real_data))
         elif "주식체결" == real_type:
-            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
+            # print("on_receive_real_data 2: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
         elif "종목프로그램매매" == real_type:
-            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
+            print("on_receive_real_data 3: %s %s %s" % (jongmok_code, real_type, real_data))
+        elif "주식우선호가" == real_type:
+            print("on_receive_real_data 4: %s %s %s" % (jongmok_code, real_type, real_data))
+        elif "ECN주식체결" == real_type:
+            # print("on_receive_real_data 5: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
+        elif "주식시세" == real_type:
+            # print("on_receive_real_data 6: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
         else:
-            print("on_receive_real_data: %s %s %s" % (jongmok_code, real_type, real_data))
+            print("on_receive_real_data 7: %s %s %s" % (jongmok_code, real_type, real_data))
 
     @SyncRequestDecorator.sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
