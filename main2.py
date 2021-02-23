@@ -94,18 +94,19 @@ def run_thread():
             Session.remove()
             sleep(COMMON_DELAY)
 
+        yesterday = datetime.now() - timedelta(days=1)
+        yesterday = yesterday.strftime("%Y%m%d")
+        today = datetime.now()
+        today = today.strftime("%Y%m%d")
         for stock_code in trader.stock_list:
             # 주식일봉차트
-            yesterday = datetime.now() - timedelta(days=1)
-            yesterday = yesterday.strftime("%Y%m%d")
-
             session = Session()
             item = session.query(StockDayCandleChart)\
                 .filter(StockDayCandleChart.종목코드 == stock_code)\
                 .order_by(StockDayCandleChart.일자.desc()).first()
             if item is not None:
-                delta = (datetime.now() - item.lastupdate)
-                if delta.days == 0:
+                lastupdate = item.lastupdate.strftime("%Y%m%d")
+                if today == lastupdate:
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     continue
