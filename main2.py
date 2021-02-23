@@ -18,7 +18,7 @@ from trader import KWTrader
 3
 COMMON_DELAY = 2.0
 LONG_DELAY = 20.0
-SCREEN_NUMBER = "1010"
+# SCREEN_NUMBER = "1010"
 
 IS_TEST_MODE = True
 
@@ -73,7 +73,9 @@ def run_thread():
                 request_trade_balloon = True
                 # 거래량급증
                 trader.logger.info('거래량급증요청')
-                trader.request_trade_balloon('001', '2', '1', '50', '5', '9', '0', 0, SCREEN_NUMBER)
+                screen_number = ScreenNumberManager.instance().get_screen_number()
+                trader.logger.info("screen_number : %s" % screen_number)
+                trader.request_trade_balloon('001', '2', '1', '50', '5', '9', '0', 0, screen_number)
         sleep(COMMON_DELAY)
 
     while True:
