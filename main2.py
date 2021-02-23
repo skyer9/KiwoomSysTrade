@@ -89,14 +89,13 @@ def run_thread():
                     continue
             trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
-            trader.logger.debug("screen_number : %s" % screen_number)
+            trader.logger.info("screen_number : %s" % screen_number)
             trader.request_stock_basic_info(stock_code, 0, screen_number)
             Session.remove()
             sleep(COMMON_DELAY)
 
         for stock_code in trader.stock_list:
             # 주식일봉차트
-            print('종목코드 : %s' % stock_code)
             yesterday = datetime.now() - timedelta(days=1)
             yesterday = yesterday.strftime("%Y%m%d")
 
@@ -118,7 +117,7 @@ def run_thread():
             #     sleep(0.2)
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
-            trader.logger.debug("screen_number : %s" % screen_number)
+            trader.logger.info("screen_number : %s" % screen_number)
             trader.request_day_candle_chart(stock_code, yesterday, 1, 0, screen_number)
 
             # # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
