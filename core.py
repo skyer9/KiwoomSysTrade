@@ -15,7 +15,7 @@ from database import StockBasicInfo, StockDayCandleChart, Session
 DELAY_SECOND = 2.0
 DELAY_SECOND_SHORT = 1.0
 
-SCREEN_NUMBER_BASE = '0101'
+# SCREEN_NUMBER_BASE = '0101'
 
 
 class ScreenNumberManager:
@@ -299,9 +299,11 @@ class KWCore(QAxWidget):
     def request_account_balance(self):
         account_no = self.account_number[0]
         prev_next = 0
-        screen_no = SCREEN_NUMBER_BASE
+        screen_number = ScreenNumberManager.instance().get_screen_number()
+        self.logger.info("screen_number : %s" % screen_number)
+        # screen_no = SCREEN_NUMBER_BASE
 
-        return self.tr_list['opw00001'].tr_opt(account_no, prev_next, screen_no)
+        return self.tr_list['opw00001'].tr_opt(account_no, prev_next, screen_number)
 
     @SyncRequestDecorator.sync_request
     def request_trade_balloon(self, market_type, sort_type, time_type, trade_type,
@@ -655,8 +657,11 @@ class KWCore(QAxWidget):
         elif "주식시세" == real_type:
             # print("on_receive_real_data 6: %s %s %s" % (jongmok_code, real_type, real_data))
             pass
+        elif "주식당일거래원" == real_type:
+            # print("on_receive_real_data 7: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
         else:
-            print("on_receive_real_data 7: %s %s %s" % (jongmok_code, real_type, real_data))
+            print("on_receive_real_data 8: %s %s %s" % (jongmok_code, real_type, real_data))
 
     @SyncRequestDecorator.sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
