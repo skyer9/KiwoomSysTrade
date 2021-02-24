@@ -50,6 +50,8 @@ class SyncRequestDecorator:
 
         return func_wrapper
 
+
+class SyncResponseDecorator:
     @staticmethod
     def sync_callback(func):
         def func_wrapper(self, *args, **kwargs):
@@ -99,18 +101,55 @@ class RequestThreadWorker(QObject):
                 continue
 
             # 요청 실행
-            # print("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
-            self.trader.logger.debug("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
+            print("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
+            self.trader.logger.debug("키움 함수 호출 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
             request[0](self.trader, *request[1], **request[2])
 
-            # # 요청에대한 결과 대기
-            # if not self.request_thread_lock.acquire(blocking=True, timeout=5):
-            #     # 요청 실패
-            #     sleep(DELAY_SECOND)
-            #     print("요청 재시도")
-            #     self.retry(request)  # 실패한 요청 재시도
+            # 요청에대한 결과 대기
+            if not self.request_thread_lock.acquire(blocking=True, timeout=5):
+                # 요청 실패
+                sleep(DELAY_SECOND)
+                print("요청 재시도")
+                self.retry(request)  # 실패한 요청 재시도
 
             sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
+
+
+class ResponseThreadWorker(QObject):
+    def __init__(self):
+        """반응 쓰레드
+        """
+        super().__init__()
+        self.request_queue = deque()  # 요청 큐
+        self.request_thread_lock = Lock()
+
+        # 간혹 요청에 대한 결과가 콜백으로 오지 않음
+        # 마지막 요청을 저장해 뒀다가 일정 시간이 지나도 결과가 안오면 재요청
+        self.retry_timer = None
+
+        self.login_status = 0
+
+        self.trader = None
+
+    def retry(self, request):
+        print("키움 함수 재시도: %s %s %s" % (request[0].__name__, request[1], request[2]))
+        self.request_queue.appendleft(request)
+
+    def run(self):
+        while True:
+            # 큐에 요청이 있으면 하나 뺌
+            # 없으면 블락상태로 있음
+            try:
+                self.trader.logger.debug("큐 확인")
+                request = self.request_queue.popleft()
+            except IndexError:
+                sleep(0.1)
+                continue
+
+            # 요청 실행
+            # print("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
+            self.trader.logger.debug("키움 함수 콜백 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
+            request[0](self.trader, *request[1], **request[2])
 
 
 def get_data_from_single_comm_data(commData, lst):
@@ -187,6 +226,14 @@ class KWCore(QAxWidget):
         self.request_thread.started.connect(self.request_thread_worker.run)
         self.request_thread.start()
 
+        # 콜백 쓰레드
+        self.response_thread_worker = ResponseThreadWorker()
+        self.response_thread_worker.trader = self
+        self.response_thread = QThread()
+        self.response_thread_worker.moveToThread(self.response_thread)
+        self.response_thread.started.connect(self.response_thread_worker.run)
+        self.response_thread.start()
+
     def comm_connect(self):
         """
         원형 : LONG CommConnect()
@@ -198,7 +245,7 @@ class KWCore(QAxWidget):
         res = self.dynamicCall("CommConnect()")
         return res
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_event_connect(self, err_code):
         """
         원형 : void OnEventConnect(LONG nErrCode);
@@ -406,16 +453,14 @@ class KWCore(QAxWidget):
             sScreenNo - 4자리의 화면번호
             Ex) openApi.CommRqData( "RQ_1", "OPT00001", 0, "0101");
         """
-        print('111')
         self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
                                                       rq_name, tr_code, prev_next, screen_no)
-        print('222')
         if self.response_comm_rq_data == KWErrorCode.OP_ERR_NONE:
             pass
         else:
             print('알 수 없는 오류 : %s' % str(self.response_comm_rq_data))
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_msg(self, screen_no, rq_name, tr_code, msg):
         """
         원형 : void OnReceiveMsg(LPCTSTR sScrNo, LPCTSTR sRQName, LPCTSTR sTrCode, LPCTSTR sMsg)
@@ -434,7 +479,7 @@ class KWCore(QAxWidget):
         self.logger.debug("on_receive_msg : %s %s %s %s" % (screen_no, rq_name, tr_code, msg))
         # print("on_receive_msg : %s %s %s %s" % (screen_no, rq_name, tr_code, msg))
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_tr_data(self, screen_no, rq_name, tr_code, record_name, prev_next,
                            data_length, error_code, message, sp_im_msg):
         """
@@ -631,7 +676,7 @@ class KWCore(QAxWidget):
         else:
             print(commData)
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_real_data(self, jongmok_code, real_type, real_data):
         """
         원형 : void OnReceiveRealData(LPCTSTR sJongmokCode, LPCTSTR sRealType, LPCTSTR sRealData)
@@ -668,7 +713,7 @@ class KWCore(QAxWidget):
         else:
             print("on_receive_real_data 9: %s %s %s" % (jongmok_code, real_type, real_data))
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
         """
         원형 : void OnReceiveChejanData(LPCTSTR sGubun, LONG nItemCnt, LPCTSTR sFidList);
@@ -685,7 +730,7 @@ class KWCore(QAxWidget):
         print("on_receive_chejan_data")
         # assert(False)
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_condition(self, code, type, condition_name, condition_index):
         """
         원형 : void OnReceiveRealCondition(LPCTSTR strCode, LPCTSTR strType, LPCTSTR strConditionName, LPCTSTR strConditionIndex)
@@ -703,7 +748,7 @@ class KWCore(QAxWidget):
         print("on_receive_condition")
         # assert (False)
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_tr_condition(self, screen_no, code_list, condition_name, index, next):
         """
         원형 : void OnReceiveTrCondition(LPCTSTR sScrNo, LPCTSTR strCodeList, LPCTSTR strConditionName, int nIndex, int nNext)
@@ -719,7 +764,7 @@ class KWCore(QAxWidget):
         print("on_receive_tr_condition")
         # assert (False)
 
-    @SyncRequestDecorator.sync_callback
+    @SyncResponseDecorator.sync_callback
     def on_receive_condition_ver(self, ret, msg):
         """
         원형 : void OnReceiveConditionVer(long lRet, LPCTSTR sMsg)
