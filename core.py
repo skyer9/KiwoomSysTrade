@@ -53,7 +53,7 @@ class SyncRequestDecorator:
     @staticmethod
     def sync_callback(func):
         def func_wrapper(self, *args, **kwargs):
-            # print("키움 함수 콜백: %s %s %s" % (func.__name__, args, kwargs))
+            print("키움 함수 콜백: %s %s %s" % (func.__name__, args, kwargs))
             func(self, *args, **kwargs)
             if self.request_thread_worker.request_thread_lock.locked():
                 self.request_thread_worker.request_thread_lock.release()
@@ -103,12 +103,12 @@ class RequestThreadWorker(QObject):
             self.trader.logger.debug("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
             request[0](self.trader, *request[1], **request[2])
 
-            # 요청에대한 결과 대기
-            if not self.request_thread_lock.acquire(blocking=True, timeout=5):
-                # 요청 실패
-                sleep(DELAY_SECOND)
-                print("요청 재시도")
-                self.retry(request)  # 실패한 요청 재시도
+            # # 요청에대한 결과 대기
+            # if not self.request_thread_lock.acquire(blocking=True, timeout=5):
+            #     # 요청 실패
+            #     sleep(DELAY_SECOND)
+            #     print("요청 재시도")
+            #     self.retry(request)  # 실패한 요청 재시도
 
             sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
 
@@ -406,8 +406,10 @@ class KWCore(QAxWidget):
             sScreenNo - 4자리의 화면번호
             Ex) openApi.CommRqData( "RQ_1", "OPT00001", 0, "0101");
         """
+        print('111')
         self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
                                                       rq_name, tr_code, prev_next, screen_no)
+        print('222')
         if self.response_comm_rq_data == KWErrorCode.OP_ERR_NONE:
             pass
         else:
@@ -660,8 +662,11 @@ class KWCore(QAxWidget):
         elif "주식당일거래원" == real_type:
             # print("on_receive_real_data 7: %s %s %s" % (jongmok_code, real_type, real_data))
             pass
+        elif "ECN주식시세" == real_type:
+            # print("on_receive_real_data 8: %s %s %s" % (jongmok_code, real_type, real_data))
+            pass
         else:
-            print("on_receive_real_data 8: %s %s %s" % (jongmok_code, real_type, real_data))
+            print("on_receive_real_data 9: %s %s %s" % (jongmok_code, real_type, real_data))
 
     @SyncRequestDecorator.sync_callback
     def on_receive_chejan_data(self, gubun, item_cnt, fid_list):
