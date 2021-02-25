@@ -548,6 +548,9 @@ class KWCore(QAxWidget):
                 prev_next = '0'
 
             if not prev_next:
+                if tr_code == 'opt10023':
+                    # 데이타 없음
+                    return
                 print("comm_data Error")
 
             elif int(prev_next) == 0:
