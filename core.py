@@ -37,7 +37,7 @@ class ScreenNumberManager:
     def get_screen_number(self):
         res = str(self._screen_number).zfill(4)
         self._screen_number += 1
-        if self._screen_number > 100:
+        if self._screen_number > 50:    # 최대 화면갯수는 200개이다.
             self._screen_number = 1
         return res
 
@@ -103,14 +103,15 @@ class RequestThreadWorker(QObject):
             self.trader.logger.debug("키움 함수 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
             request[0](self.trader, *request[1], **request[2])
 
-            # # 요청에대한 결과 대기
-            # if not self.request_thread_lock.acquire(blocking=True, timeout=5):
-            #     # 요청 실패
-            #     sleep(DELAY_SECOND)
-            #     print("요청 재시도")
-            #     self.retry(request)  # 실패한 요청 재시도
+            # 요청에대한 결과 대기
+            if not self.request_thread_lock.acquire(blocking=True, timeout=5):
+                # 요청 실패
+                sleep(DELAY_SECOND)
+                print("요청 재시도")
+                self.retry(request)  # 실패한 요청 재시도
 
-            sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
+            # 여기에 딜레이 걸면 안된다.
+            # sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
 
 
 def get_data_from_single_comm_data(commData, lst):
@@ -406,10 +407,8 @@ class KWCore(QAxWidget):
             sScreenNo - 4자리의 화면번호
             Ex) openApi.CommRqData( "RQ_1", "OPT00001", 0, "0101");
         """
-        print('111')
         self.response_comm_rq_data = self.dynamicCall("CommRqData(QString, QString, int, QString",
                                                       rq_name, tr_code, prev_next, screen_no)
-        print('222')
         if self.response_comm_rq_data == KWErrorCode.OP_ERR_NONE:
             pass
         else:
