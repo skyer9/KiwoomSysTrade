@@ -37,7 +37,7 @@ class ScreenNumberManager:
     def get_screen_number(self):
         res = str(self._screen_number).zfill(4)
         self._screen_number += 1
-        if self._screen_number > 100:
+        if self._screen_number > 50:    # 최대 화면갯수는 200개이다.
             self._screen_number = 1
         return res
 
@@ -112,7 +112,8 @@ class RequestThreadWorker(QObject):
                 print("요청 재시도")
                 self.retry(request)  # 실패한 요청 재시도
 
-            sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
+            # 여기에 딜레이 걸면 안된다.
+            # sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
 
 
 class ResponseThreadWorker(QObject):

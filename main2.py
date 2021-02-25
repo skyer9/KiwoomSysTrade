@@ -64,6 +64,9 @@ def run_thread():
             continue
         break
 
+    logger.info('10초 딜레이')
+    sleep(10.0)
+
     request_trade_balloon = False
     while True:
         if len(trader.stock_list) > 0:
@@ -77,6 +80,9 @@ def run_thread():
                 trader.logger.info("screen_number : %s" % screen_number)
                 trader.request_trade_balloon('001', '2', '1', '50', '5', '9', '0', 0, screen_number)
         sleep(COMMON_DELAY)
+
+    logger.info('10초 딜레이')
+    sleep(10.0)
 
     while True:
         for stock_code in trader.stock_list:
@@ -114,19 +120,10 @@ def run_thread():
                     continue
             Session.remove()
 
-            # # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
-            # # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
-            # while trader.ON_RECEIVE_TR_DATA_IN_PROCESS:
-            #     sleep(0.2)
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
             trader.logger.info("screen_number : %s" % screen_number)
             trader.request_day_candle_chart(stock_code, yesterday, 1, 0, screen_number)
-
-            # # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
-            # # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
-            # while trader.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE != stock_code:
-            #     sleep(0.05)
 
             sleep(COMMON_DELAY)
 
@@ -147,10 +144,8 @@ if __name__ == '__main__':
 
     trader.setup()
 
-    # trader.run()
     x = threading.Thread(target=run_thread, args=())
     x.start()
-    # run_thread()
 
     # # 종목명
     # print(trader.get_master_code_name('300120'))
