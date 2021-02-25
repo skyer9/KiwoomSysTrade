@@ -64,8 +64,8 @@ def run_thread():
             continue
         break
 
-    logger.info('10초 딜레이')
-    sleep(10.0)
+    logger.info('========================== 5초 딜레이 ==========================')
+    sleep(5.0)
 
     request_trade_balloon = False
     while True:
@@ -81,8 +81,8 @@ def run_thread():
                 trader.request_trade_balloon('001', '2', '1', '50', '5', '9', '0', 0, screen_number)
         sleep(COMMON_DELAY)
 
-    logger.info('10초 딜레이')
-    sleep(10.0)
+    logger.info('========================== 5초 딜레이 ==========================')
+    sleep(5.0)
 
     while True:
         for stock_code in trader.stock_list:
