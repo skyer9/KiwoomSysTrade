@@ -502,7 +502,7 @@ class KWCore(QAxWidget):
 
             if not prev_next:
                 if tr_code == 'opt10023':
-                    print('데이타 없음')
+                    print('데이타 없음.')
                     return
                 print("comm_data Error")
 
