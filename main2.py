@@ -11,6 +11,7 @@ from time import sleep
 from PyQt5.QtWidgets import QApplication
 
 import config
+import database
 from core import ScreenNumberManager
 from database import Base, StockBasicInfo, StockDayCandleChart, Session, DATABASE
 from trader import KWTrader
@@ -24,7 +25,7 @@ if IS_TEST_MODE:
     # STOCK_ACCOUNT_NUMBER = "8888888811"
     STOCK_ACCOUNT_NUMBER = config.TEST_STOCK_ACCOUNT_NUMBER  # 계좌정보가 8자리이면 끝에 11 을 붙여 10자리로 만든다.
     LOG_LEVEL = logging.DEBUG
-    # LOG_LEVEL = logging.INFO
+    LOG_LEVEL = logging.INFO
 else:
     # STOCK_ACCOUNT_NUMBER = "1234567890"
     STOCK_ACCOUNT_NUMBER = config.REAL_STOCK_ACCOUNT_NUMBER
@@ -90,6 +91,9 @@ def run_thread():
     while True:
         for stock_code in trader.stock_list:
             # 주식기본정보
+            while database.DB_LOCKED:
+                sleep(0.1)
+            database.DB_LOCKED = True
             session = Session()
             item = session.query(StockBasicInfo).filter(StockBasicInfo.종목코드 == stock_code).first()
             if item is not None:
@@ -97,12 +101,15 @@ def run_thread():
                 if delta.days == 0:
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+                    Session.remove()
+                    database.DB_LOCKED = False
                     continue
             trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
             trader.logger.info("screen_number : %s" % screen_number)
-            trader.request_stock_basic_info(stock_code, 0, screen_number)
             Session.remove()
+            database.DB_LOCKED = False
+            trader.request_stock_basic_info(stock_code, 0, screen_number)
             sleep(COMMON_DELAY)
 
         yesterday = datetime.now() - timedelta(days=1)
@@ -111,6 +118,9 @@ def run_thread():
         today = today.strftime("%Y%m%d")
         for stock_code in trader.stock_list:
             # 주식일봉차트
+            while database.DB_LOCKED:
+                sleep(0.1)
+            database.DB_LOCKED = True
             session = Session()
             item = session.query(StockDayCandleChart)\
                 .filter(StockDayCandleChart.종목코드 == stock_code)\
@@ -120,8 +130,11 @@ def run_thread():
                 if today == lastupdate:
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
+                    Session.remove()
+                    database.DB_LOCKED = False
                     continue
             Session.remove()
+            database.DB_LOCKED = False
 
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
