@@ -15,18 +15,16 @@ from core import ScreenNumberManager
 from database import Base, StockBasicInfo, StockDayCandleChart, Session, DATABASE
 from trader import KWTrader
 
-3
 COMMON_DELAY = 2.0
 LONG_DELAY = 20.0
-# SCREEN_NUMBER = "1010"
 
 IS_TEST_MODE = True
 
 if IS_TEST_MODE:
     # STOCK_ACCOUNT_NUMBER = "8888888811"
     STOCK_ACCOUNT_NUMBER = config.TEST_STOCK_ACCOUNT_NUMBER  # 계좌정보가 8자리이면 끝에 11 을 붙여 10자리로 만든다.
-    # LOG_LEVEL = logging.DEBUG
-    LOG_LEVEL = logging.INFO
+    LOG_LEVEL = logging.DEBUG
+    # LOG_LEVEL = logging.INFO
 else:
     # STOCK_ACCOUNT_NUMBER = "1234567890"
     STOCK_ACCOUNT_NUMBER = config.REAL_STOCK_ACCOUNT_NUMBER
@@ -51,34 +49,39 @@ logger.addHandler(stdout_handler)
 
 
 def run_thread():
-    # 로그인 체크
-
     while True:
+        # 로그인 체크
         connect_state = trader.get_connect_state()
         if connect_state is not None:
-            if connect_state == 0:
-                sleep(COMMON_DELAY)
-                continue
-        else:
-            sleep(COMMON_DELAY)
-            continue
-        break
+            if connect_state == 1:
+                # login ok
+                break
+        sleep(COMMON_DELAY)
 
     logger.info('========================== 5초 딜레이 ==========================')
     sleep(5.0)
 
     request_trade_balloon = False
     while True:
+        # 거래량급증
         if len(trader.stock_list) > 0:
             break
         else:
             if not request_trade_balloon:
                 request_trade_balloon = True
-                # 거래량급증
                 trader.logger.info('거래량급증요청')
                 screen_number = ScreenNumberManager.instance().get_screen_number()
                 trader.logger.info("screen_number : %s" % screen_number)
-                trader.request_trade_balloon('001', '2', '1', '50', '5', '9', '0', 0, screen_number)
+
+                # 시장구분 = 000:전체, 001:코스피, 101:코스닥
+                # 정렬구분 = 1:급증량, 2:급증률
+                # 시간구분 = 1:분, 2:전일
+                # 거래량구분 = 5:5천주이상, 10:만주이상, 50:5만주이상, 100:10만주이상, 200:20만주이상, 300:30만주이상, 500:50만주이상, 1000:백만주이상
+                # 시간 = 분 입력
+                # 종목조건 = 0:전체조회, 1:관리종목제외, 5:증100제외, 6:증100만보기, 7:증40만보기, 8:증30만보기, 9:증20만보기
+                # 가격구분 = 0:전체조회, 2:5만원이상, 5:1만원이상, 6:5천원이상, 8:1천원이상, 9:10만원이상
+                # market_type, sort_type, time_type, trade_type, minutes, jongmok_type, price_type, prev_next, screen_no
+                trader.request_trade_balloon('000', '1', '1', '5', '1', '5', '0', 0, screen_number)
         sleep(COMMON_DELAY)
 
     logger.info('========================== 5초 딜레이 ==========================')

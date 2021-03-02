@@ -12,10 +12,8 @@ from PyQt5.QtCore import QObject, QThread
 from constants import KWErrorCode
 from database import StockBasicInfo, StockDayCandleChart, Session
 
-DELAY_SECOND = 2.0
+DELAY_SECOND = 1.0
 DELAY_SECOND_SHORT = 1.0
-
-# SCREEN_NUMBER_BASE = '0101'
 
 
 class ScreenNumberManager:
@@ -103,16 +101,6 @@ class RequestThreadWorker(QObject):
             self.trader.logger.debug("키움 함수 호출 실행: %s %s %s" % (request[0].__name__, request[1], request[2]))
             request[0](self.trader, *request[1], **request[2])
 
-            # 요청에대한 결과 대기
-            if not self.request_thread_lock.acquire(blocking=True, timeout=5):
-                # 요청 실패
-                sleep(DELAY_SECOND)
-                print("요청 재시도")
-                self.retry(request)  # 실패한 요청 재시도
-
-            # 여기에 딜레이 걸면 안된다.
-            # sleep(DELAY_SECOND)  # 0.2초 이상 대기 후 마무리
-
 
 def get_data_from_single_comm_data(commData, lst):
     res = {}
@@ -143,6 +131,8 @@ class KWCore(QAxWidget):
     def __init__(self):
         super().__init__()
 
+        self.DB_LOCKED = False
+
         assert (self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
         self.response_comm_rq_data = None
@@ -150,9 +140,6 @@ class KWCore(QAxWidget):
         self.logger = None
         self.available_price = None
         self.stock_list = []
-
-        self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
-        self.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE = ''
 
     def _init_connect_events(self):
         # 서버 접속 관련 이벤트
@@ -242,7 +229,6 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetLoginInfo(QString)", tag)
 
-    # @SyncRequestDecorator.sync_request
     def get_connect_state(self):
         """
         원형 : LONG GetConnectState()
@@ -253,7 +239,6 @@ class KWCore(QAxWidget):
         """
         return self.dynamicCall("GetConnectState()")
 
-    # @SyncRequestDecorator.sync_request
     def get_master_code_name(self, code):
         """
         원형 : BSTR GetMasterCodeName(LPCTSTR strCode)
@@ -302,7 +287,6 @@ class KWCore(QAxWidget):
         prev_next = 0
         screen_number = ScreenNumberManager.instance().get_screen_number()
         self.logger.info("screen_number : %s" % screen_number)
-        # screen_no = SCREEN_NUMBER_BASE
 
         return self.tr_list['opw00001'].tr_opt(account_no, prev_next, screen_number)
 
@@ -349,7 +333,8 @@ class KWCore(QAxWidget):
             sOrgOrderNo – 원주문번호
         반환값 : 에러코드 <4.에러코드표 참고>
         비고 :
-            sHogaGb – 00:지정가, 03:시장가, 05:조건부지정가, 06:최유리지정가, 07:최우선지정가, 10:지정 가IOC, 13:시장가IOC, 16:최유리IOC, 20:지정가FOK, 23:시장가FOK, 26:최유리FOK, 61:장전시간 외종가, 62:시간외단일가, 81:장후시간외종가
+            sHogaGb – 00:지정가, 03:시장가, 05:조건부지정가, 06:최유리지정가, 07:최우선지정가, 10:지정 가IOC, 13:시장가IOC,
+            16:최유리IOC, 20:지정가FOK, 23:시장가FOK, 26:최유리FOK, 61:장전시간 외종가, 62:시간외단일가, 81:장후시간외종가
             ※ 시장가, 최유리지정가, 최우선지정가, 시장가IOC, 최유리IOC, 시장가FOK, 최유리FOK, 장전시 간외, 장후시간외 주문시 주문가격을 입력하지 않습니다.
             Ex) 지정가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 48500, "00", "");
                 시장가 매수 - openApi.SendOrder("RQ_1", "0101", "5015123410", 1, "000660", 10, 0, "03", "");
@@ -359,7 +344,7 @@ class KWCore(QAxWidget):
         self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
                          [rq_name, screen_no, account_no, order_type, code, qty, price, hoga_gb, org_order_no])
 
-    def set_input_value(self, id, value):
+    def set_input_value(self, input_id, input_value):
         """
         원형 : void SetInputValue(BSTR sID, BSTR sValue)
         설명 : Tran 입력 값을 서버통신 전에 입력한다.
@@ -371,7 +356,7 @@ class KWCore(QAxWidget):
             Ex) openApi.SetInputValue("종목코드", "000660");
                 openApi.SetInputValue("계좌번호", "5015123401");
         """
-        self.dynamicCall("SetInputValue(QString, QString)", id, value)
+        self.dynamicCall("SetInputValue(QString, QString)", input_id, input_value)
 
     @SyncRequestDecorator.sync_request
     def disconnect_real_data(self, screen_no):
@@ -455,17 +440,9 @@ class KWCore(QAxWidget):
             sRQName – CommRqData의 sRQName과 매핑되는 이름이다.
             sTrCode – CommRqData의 sTrCode과 매핑되는 이름이다.
         """
-        self.ON_RECEIVE_TR_DATA_IN_PROCESS = True
-
-        # print(screen_no)
-        # print(rq_name)
-        # print(tr_code)
-        # print(record_name)
-        # print(prev_next)
 
         if tr_code == 'KOA_NORMAL_BUY_KP_ORD':
             print('구매 콜백')
-            self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
             return
 
         try:
@@ -474,27 +451,16 @@ class KWCore(QAxWidget):
 
             self.logger.info("tr_code : %s, rq_name : %s" % (tr_code, rq_name))
 
-            # print("[ INFO ]")
-            # print("\t screen_no :", screen_no)
-            # print("\t rq_name :", rq_name)
-            # print("\t tr_code :", tr_code)
-            # print("\t record_name :", record_name)
-            # print("\t prev_next: ", prev_next)
-            # print("\n")
-
             tr_option = self.tr_list[tr_code]
 
             if hasattr(tr_option, 'record_name'):
                 repeat_cnt = self.get_repeat_cnt(tr_code, tr_option.record_name)
-                # print("\t get_repeat_cnt(record_name) :", repeat_cnt)
 
             if hasattr(tr_option, 'record_name_single'):
                 repeat_cnt_single = self.get_repeat_cnt(tr_code, tr_option.record_name_single)
-                # print("\t get_repeat_cnt(record_name_single) :", repeat_cnt_single)
 
             if hasattr(tr_option, 'record_name_multiple'):
                 repeat_cnt_multiple = self.get_repeat_cnt(tr_code, tr_option.record_name_multiple)
-                # print("\t get_repeat_cnt(record_name_multiple) :", repeat_cnt_multiple)
 
             comm_data = {}
             if tr_code == 'opw00001':
@@ -557,7 +523,7 @@ class KWCore(QAxWidget):
             print("\t\t\t", "###########################################")
             print("\n")
 
-        self.ON_RECEIVE_TR_DATA_IN_PROCESS = False
+        self.disconnect_real_data(screen_no)
 
     def processData(self, commData):
         if commData['tr_code'] == 'opw00001':
@@ -603,13 +569,12 @@ class KWCore(QAxWidget):
             res = get_data_from_single_comm_data(commData, ['종목코드'])
             stock_code = res['종목코드']
 
-            # OCX 에서 데이타 수신중 새로운 Call 에 의해 데이타가 변경되면 오류가 발생한다.
-            # 차후에는 화면번호를 변경해가면서 Call 하는 방식으로 변경 필요
-            self.ON_RECEIVE_TR_DATA_IN_PROCESS_STOCK_CODE = stock_code
-            sleep(0.1)
-
             print('종목코드 start : %s' % stock_code)
             res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량', '거래대금', '일자', '시가', '고가', '저가', '전일종가'])
+            print('111')
+            while self.DB_LOCKED:
+                sleep(0.1)
+            self.DB_LOCKED = True
             session = Session()
             for idx, obj in enumerate(res):
                 obj = StockDayCandleChart(stock_code, float(obj['현재가']), float(obj['거래량']), float(obj['거래대금']),
@@ -620,15 +585,17 @@ class KWCore(QAxWidget):
                     .first()
                 if item is None:
                     session.add(obj)
-                    # print('%s %s' % (stock_code, obj.일자))
                 else:
                     if idx == 0:
                         # 첫 라인이 업데이트면 신규 데이타 없음
                         item.lastupdate = datetime.now()
                         break
                     continue
+            print('333')
             session.commit()
+            print('444')
             Session.remove()
+            self.DB_LOCKED = False
             print('종목코드 end : %s' % stock_code)
         else:
             print(commData)
@@ -644,8 +611,6 @@ class KWCore(QAxWidget):
             sRealData – 실시간 데이터전문
         반환값 : 없음
         """
-        # print("Called OnReceiveRealData", jongmok_code, real_type, real_data)
-
         if "주식호가잔량" == real_type:
             print("on_receive_real_data 1: %s %s %s" % (jongmok_code, real_type, real_data))
         elif "주식체결" == real_type:
@@ -685,7 +650,6 @@ class KWCore(QAxWidget):
             sFidList – 데이터 구분은 ';' 이다.
         """
         print("on_receive_chejan_data")
-        # assert(False)
 
     @SyncRequestDecorator.sync_callback
     def on_receive_condition(self, code, type, condition_name, condition_index):
@@ -703,7 +667,6 @@ class KWCore(QAxWidget):
             strType으로 편입된 종목인지 이탈된 종목인지 구분한다.
         """
         print("on_receive_condition")
-        # assert (False)
 
     @SyncRequestDecorator.sync_callback
     def on_receive_tr_condition(self, screen_no, code_list, condition_name, index, next):
@@ -719,7 +682,6 @@ class KWCore(QAxWidget):
         반환값 : 없음
         """
         print("on_receive_tr_condition")
-        # assert (False)
 
     @SyncRequestDecorator.sync_callback
     def on_receive_condition_ver(self, ret, msg):
@@ -730,7 +692,6 @@ class KWCore(QAxWidget):
         반환값 : 없음
         """
         print("on_receive_condition_ver")
-        # assert (False)
 
     def get_repeat_cnt(self, tr_code, record_name):
         """
