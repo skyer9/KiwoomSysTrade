@@ -7,13 +7,15 @@ from sqlalchemy import create_engine, Column, String, DateTime, Numeric
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
-DATABASE = create_engine('mysql+mysqldb://root:abcd1234@localhost:3306/db_stock?charset=utf8',
+DATABASE = create_engine('mysql+mysqldb://root:@localhost:3306/db_stock?charset=utf8',
                          echo=False, pool_size=20, pool_recycle=500)
 
 session_factory = sessionmaker(bind=DATABASE)
 Session = scoped_session(session_factory)
 
 Base = declarative_base()
+
+DB_LOCKED = False
 
 
 class StockBasicInfo(Base):
