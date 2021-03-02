@@ -12,7 +12,7 @@ from PyQt5.QtCore import QObject, QThread
 from constants import KWErrorCode
 from database import StockBasicInfo, StockDayCandleChart, Session
 
-DELAY_SECOND = 2.0
+DELAY_SECOND = 1.0
 DELAY_SECOND_SHORT = 1.0
 
 
@@ -130,6 +130,8 @@ class KWCore(QAxWidget):
 
     def __init__(self):
         super().__init__()
+
+        self.DB_LOCKED = False
 
         assert (self.setControl("KHOPENAPI.KHOpenAPICtrl.1"))
         self._init_connect_events()
@@ -570,6 +572,9 @@ class KWCore(QAxWidget):
             print('종목코드 start : %s' % stock_code)
             res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량', '거래대금', '일자', '시가', '고가', '저가', '전일종가'])
             print('111')
+            while self.DB_LOCKED:
+                sleep(0.1)
+            self.DB_LOCKED = True
             session = Session()
             for idx, obj in enumerate(res):
                 obj = StockDayCandleChart(stock_code, float(obj['현재가']), float(obj['거래량']), float(obj['거래대금']),
@@ -590,6 +595,7 @@ class KWCore(QAxWidget):
             session.commit()
             print('444')
             Session.remove()
+            self.DB_LOCKED = False
             print('종목코드 end : %s' % stock_code)
         else:
             print(commData)
