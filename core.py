@@ -88,9 +88,9 @@ class RequestThreadWorker(QObject):
                 sleep(DELAY_SECOND)
                 continue
 
-            while database.DB_LOCKED:
-                self.trader.logger.debug('database in use')
-                sleep(0.3)
+            # while database.DB_LOCKED:
+            #     self.trader.logger.debug('database in use')
+            #     sleep(0.3)
 
             # 큐에 요청이 있으면 하나 뺌
             # 없으면 블락상태로 있음
@@ -528,6 +528,8 @@ class KWCore(QAxWidget):
 
         self.disconnect_real_data(screen_no)
 
+        print('on_receive_tr_data finished')
+
     def processData(self, commData):
         if commData['tr_code'] == 'opw00001':
             # 예수금상세현황요청
@@ -556,9 +558,11 @@ class KWCore(QAxWidget):
             self.logger.info('종목수 : %i' % len(self.stock_list))
         elif commData['tr_code'] == 'opt10001':
             # 주식기본정보요청
-            while database.DB_LOCKED:
-                sleep(0.1)
-            database.DB_LOCKED = True
+            # while database.DB_LOCKED:
+            #     sleep(0.1)
+            # database.DB_LOCKED = True
+            database.db_lock.acquire()
+            print('database.db_lock.acquire() 11')
             session = Session()
             res = get_data_from_single_comm_data(commData, ['종목코드', '종목명'])
             item = session.query(StockBasicInfo).filter(StockBasicInfo.종목코드 == res['종목코드']).first()
@@ -570,7 +574,9 @@ class KWCore(QAxWidget):
                 item.lastupdate = datetime.now()
             session.commit()
             Session.remove()
-            database.DB_LOCKED = False
+            # database.DB_LOCKED = False
+            database.db_lock.release()
+            print('database.db_lock.release() 11')
         elif commData['tr_code'] == 'opt10081':
             # 주식일봉차트조회요청
             res = get_data_from_single_comm_data(commData, ['종목코드'])
@@ -578,9 +584,11 @@ class KWCore(QAxWidget):
 
             print('종목코드 start : %s' % stock_code)
             res = get_data_from_multiple_comm_data(commData, ['현재가', '거래량', '거래대금', '일자', '시가', '고가', '저가', '전일종가'])
-            while database.DB_LOCKED:
-                sleep(0.1)
-            database.DB_LOCKED = True
+            # while database.DB_LOCKED:
+            #     sleep(0.1)
+            # database.DB_LOCKED = True
+            database.db_lock.acquire()
+            print('database.db_lock.acquire() 22')
             session = Session()
             for idx, obj in enumerate(res):
                 obj = StockDayCandleChart(stock_code, float(obj['현재가']), float(obj['거래량']), float(obj['거래대금']),
@@ -599,10 +607,14 @@ class KWCore(QAxWidget):
                     continue
             session.commit()
             Session.remove()
-            database.DB_LOCKED = False
+            # database.DB_LOCKED = False
+            database.db_lock.release()
+            print('database.db_lock.release() 22')
             print('종목코드 end : %s' % stock_code)
         else:
             print(commData)
+
+        print('processData finished')
 
     @SyncRequestDecorator.sync_callback
     def on_receive_real_data(self, jongmok_code, real_type, real_data):
