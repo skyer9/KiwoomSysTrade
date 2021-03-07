@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from datetime import datetime
+from threading import Lock
 
 from sqlalchemy import create_engine, Column, String, DateTime, Numeric
 from sqlalchemy.ext.declarative import declarative_base
@@ -15,7 +16,8 @@ Session = scoped_session(session_factory)
 
 Base = declarative_base()
 
-DB_LOCKED = False
+# DB_LOCKED = False
+db_lock = Lock()
 
 
 class StockBasicInfo(Base):

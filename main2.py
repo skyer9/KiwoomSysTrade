@@ -90,10 +90,13 @@ def run_thread():
 
     while True:
         for stock_code in trader.stock_list:
+            print('111')
             # 주식기본정보
-            while database.DB_LOCKED:
-                sleep(0.1)
-            database.DB_LOCKED = True
+            # while database.DB_LOCKED:
+            #     sleep(0.1)
+            # database.DB_LOCKED = True
+            database.db_lock.acquire()
+            print('database.db_lock.acquire() 33')
             session = Session()
             item = session.query(StockBasicInfo).filter(StockBasicInfo.종목코드 == stock_code).first()
             if item is not None:
@@ -102,14 +105,20 @@ def run_thread():
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     Session.remove()
-                    database.DB_LOCKED = False
+                    # database.DB_LOCKED = False
+                    database.db_lock.release()
+                    print('222')
+                    print('database.db_lock.release() 33')
                     continue
             trader.logger.info('기본정보 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
             trader.logger.info("screen_number : %s" % screen_number)
             Session.remove()
-            database.DB_LOCKED = False
+            # database.DB_LOCKED = False
+            database.db_lock.release()
+            print('database.db_lock.release() 33')
             trader.request_stock_basic_info(stock_code, 0, screen_number)
+            print('333')
             sleep(COMMON_DELAY)
 
         yesterday = datetime.now() - timedelta(days=1)
@@ -118,9 +127,11 @@ def run_thread():
         today = today.strftime("%Y%m%d")
         for stock_code in trader.stock_list:
             # 주식일봉차트
-            while database.DB_LOCKED:
-                sleep(0.1)
-            database.DB_LOCKED = True
+            # while database.DB_LOCKED:
+            #     sleep(0.1)
+            # database.DB_LOCKED = True
+            database.db_lock.acquire()
+            print('database.db_lock.acquire() 44')
             session = Session()
             item = session.query(StockDayCandleChart)\
                 .filter(StockDayCandleChart.종목코드 == stock_code)\
@@ -131,10 +142,14 @@ def run_thread():
                     # 업데이트 불필요
                     print('skip 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
                     Session.remove()
-                    database.DB_LOCKED = False
+                    # database.DB_LOCKED = False
+                    database.db_lock.release()
+                    print('database.db_lock.release() 44')
                     continue
             Session.remove()
-            database.DB_LOCKED = False
+            # database.DB_LOCKED = False
+            database.db_lock.release()
+            print('database.db_lock.release() 44')
 
             trader.logger.info('일봉 종목명(종목코드) : %s(%s)' % (trader.get_master_code_name(stock_code), stock_code))
             screen_number = ScreenNumberManager.instance().get_screen_number()
